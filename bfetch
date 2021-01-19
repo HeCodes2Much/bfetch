@@ -10813,6 +10813,59 @@ ssssssssssssso/-`      `-/osssssssssssss
 EOF
         ;;
 
+        "Syaoran"*)
+            set_colors 10 6 3 4
+            read -rd '' ascii_data <<'EOF'
+${c3}                .  ${c4}.
+${c3}            ./ymd` ${c4}yNh+.
+${c3}        `-odNMMMd` ${c4}yMMMMds:`
+${c3}     ./ymMMMMMMMd` ${c4}yMMMMMMMNy/.
+${c3} `-odNMMMMMMMMMMd` ${c4}yMMMMMMMMMMNdo-`
+${c3}`hMMMMMMMNhNMMMMd` ${c4}yMMMMNhNMMMMMMMm.
+${c3}`mMMMMNy:``yNMMMd` ${c4}yMMMMN.`:smMMMMN.
+${c3}`mMMMMMdo`  `.smd` ${c4}yMMMMMh/. sMMMMN.
+${c3}`sNMMMMMMMmy.  `   ${c4}yMMMMMMMNddMMMMN.
+${c3}  ` sdMMMMMMMNdo.  ${c4}yMMMMMMMMMMMMMd/
+${c3}`s+   `+hNMMMMMMd` ${c4}yMMMMNymMMMMMMs.
+${c3}`mMMm.   `:NMMMMd` ${c4}yMMMMN. .+mMMMMm.
+${c3}`mMMMMh   `mMMMMd` ${c4}yMMMMN.   sMMMMN.
+${c3}`mMMMMm/. `mMMMMd` ${c4}yMMMMN.   sMMMMN.
+${c3}`mMMMMMMNhYNMMMMd` ${c4}yMMMMN.   sMMMMN.
+${c3} .+hNMMMMMMMMMMMd` ${c4}yMMMMN.   sMNho-
+${c3}    `:smMMMMMMMMd` ${c4}yMMMMN.   sMN/
+${c3}        -ohNMMMMd` ${c4}yMMMMm.   s
+${c3}           `/ymMd` ${c4}yMmy/.
+${c3}              `-/  ${c4}:-`
+EOF
+                ;;
+        "HPBD"*)
+            info_col1=$(shuf -i1-6 -n1)
+            info_col2=$(($info_col1 + 8))
+            dark_col1=$(shuf -i1-6 -n1)
+            dark_col2=$(shuf -i1-6 -n1)
+            light_col1=$(($dark_col1 + 8))
+            light_col2=$(($dark_col2 + 8))
+            set_colors $info_col1 $info_col2 $light_col1 $dark_col1 $light_col2 $dark_col2
+            read -rd '' ascii_data <<'EOF'
+${c3}
+
+
+██${c4}╗  ${c3}██${c4}╗ ${c3}█████${c4}╗ ${c3}██████${c4}╗ ${c3}██████${c4}╗ ${c3}██${c4}╗   ${c3}██${c4}╗
+${c3}██${c4}║  ${c3}██${c4}║${c3}██${c4}╔══${c3}██${c4}╗${c3}██${c4}╔══${c3}██${c4}╗${c3}██${c4}╔══${c3}██${c4}╗╚${c3}██${c4}╗ ${c3}██${c4}╔╝
+${c3}███████${c4}║${c3}███████${c4}║${c3}██████${c4}╔╝${c3}██████${c4}╔╝ ${c4}╚${c3}████${c4}╔╝
+${c3}██${c4}╔══${c3}██${c4}║${c3}██${c4}╔══${c3}██${c4}║${c3}██${c4}╔═══╝ ${c3}██${c4}╔═══╝   ${c4}╚${c3}██${c4}╔╝
+${c3}██${c4}║  ${c3}██${c4}║${c3}██${c4}║  ${c3}██${c4}║${c3}██${c4}║     ${c3}██${c4}║        ${c3}██${c4}║
+╚═╝  ╚═╝╚═╝  ╚═╝╚═╝     ╚═╝        ╚═╝
+
+                 ${c5}██████${c6}╗ ${c5}██${c6}╗${c5}██████${c6}╗ ${c5}████████${c6}╗${c5}██${c6}╗  ${c5}██${c6}╗${c5}██████${c6}╗  ${c5}█████${c6}╗ ${c5}██${c6}╗   ${c5}██${c6}╗
+                 ${c5}██${c6}╔══${c5}██${c6}╗${c5}██${c6}║${c5}██${c6}╔══${c5}██${c6}╗╚══${c5}██${c6}╔══╝${c5}██${c6}║  ${c5}██${c6}║${c5}██${c6}╔══${c5}██${c6}╗${c5}██${c6}╔══${c5}██${c6}╗╚${c5}██${c6}╗ ${c5}██${c6}╔╝
+                 ${c5}██████${c6}╔╝${c5}██${c6}║${c5}██████${c6}╔╝   ${c5}██${c6}║   ${c5}███████${c6}║${c5}██${c6}║  ${c5}██${c6}║${c5}███████${c6}║ ╚${c5}████${c6}╔╝
+                 ${c5}██${c6}╔══${c5}██${c6}╗${c5}██${c6}║${c5}██${c6}╔══${c5}██${c6}╗   ${c5}██${c6}║   ${c5}██${c6}╔══${c5}██${c6}║${c5}██${c6}║  ${c5}██${c6}║${c5}██${c6}╔══${c5}██${c6}║  ╚${c5}██${c6}╔╝
+                 ${c5}██████${c6}╔╝${c5}██${c6}║${c5}██${c6}║  ${c5}██${c6}║   ${c5}██${c6}║   ${c5}██${c6}║  ${c5}██${c6}║${c5}██████${c6}╔╝${c5}██${c6}║  ${c5}██${c6}║   ${c5}██${c6}║
+                 ╚═════╝ ╚═╝╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═╝╚═════╝ ╚═╝  ╚═╝   ╚═╝
+EOF
+                ;;
+
         *)
             case $kernel_name in
                 *"BSD")
@@ -10966,58 +11019,6 @@ oMMMMmMMMMNds:.+MMMmmMMN/.-odNMMMMmMMMM+
         .omMMMMMMMM-`NMMMMMMMmo.
           `:hMMMMMM. NMMMMMh/`
              .odNm+  /dNms.
-EOF
-                ;;
-                "Syaoran"*)
-                    set_colors 10 6 3 4
-                    read -rd '' ascii_data <<'EOF'
-${c3}                .  ${c4}.
-${c3}            ./ymd` ${c4}yNh+.
-${c3}        `-odNMMMd` ${c4}yMMMMds:`
-${c3}     ./ymMMMMMMMd` ${c4}yMMMMMMMNy/.
-${c3} `-odNMMMMMMMMMMd` ${c4}yMMMMMMMMMMNdo-`
-${c3}`hMMMMMMMNhNMMMMd` ${c4}yMMMMNhNMMMMMMMm.
-${c3}`mMMMMNy:``yNMMMd` ${c4}yMMMMN.`:smMMMMN.
-${c3}`mMMMMMdo`  `.smd` ${c4}yMMMMMh/. sMMMMN.
-${c3}`sNMMMMMMMmy.  `   ${c4}yMMMMMMMNddMMMMN.
-${c3}  ` sdMMMMMMMNdo.  ${c4}yMMMMMMMMMMMMMd/
-${c3}`s+   `+hNMMMMMMd` ${c4}yMMMMNymMMMMMMs.
-${c3}`mMMm.   `:NMMMMd` ${c4}yMMMMN. .+mMMMMm.
-${c3}`mMMMMh   `mMMMMd` ${c4}yMMMMN.   sMMMMN.
-${c3}`mMMMMm/. `mMMMMd` ${c4}yMMMMN.   sMMMMN.
-${c3}`mMMMMMMNhYNMMMMd` ${c4}yMMMMN.   sMMMMN.
-${c3} .+hNMMMMMMMMMMMd` ${c4}yMMMMN.   sMNho-
-${c3}    `:smMMMMMMMMd` ${c4}yMMMMN.   sMN/
-${c3}        -ohNMMMMd` ${c4}yMMMMm.   s
-${c3}           `/ymMd` ${c4}yMmy/.
-${c3}              `-/  ${c4}:-`
-EOF
-                ;;
-                "HPBD"*)
-                    info_col1=$(shuf -i1-6 -n1)
-                    info_col2=$(($info_col1 + 8))
-                    dark_col1=$(shuf -i1-6 -n1)
-                    dark_col2=$(shuf -i1-6 -n1)
-                    light_col1=$(($dark_col1 + 8))
-                    light_col2=$(($dark_col2 + 8))
-                    set_colors $info_col1 $info_col2 $light_col1 $dark_col1 $light_col2 $dark_col2
-                    read -rd '' ascii_data <<'EOF'
-${c3}
-
-
-██${c4}╗  ${c3}██${c4}╗ ${c3}█████${c4}╗ ${c3}██████${c4}╗ ${c3}██████${c4}╗ ${c3}██${c4}╗   ${c3}██${c4}╗
-${c3}██${c4}║  ${c3}██${c4}║${c3}██${c4}╔══${c3}██${c4}╗${c3}██${c4}╔══${c3}██${c4}╗${c3}██${c4}╔══${c3}██${c4}╗╚${c3}██${c4}╗ ${c3}██${c4}╔╝
-${c3}███████${c4}║${c3}███████${c4}║${c3}██████${c4}╔╝${c3}██████${c4}╔╝ ${c4}╚${c3}████${c4}╔╝
-${c3}██${c4}╔══${c3}██${c4}║${c3}██${c4}╔══${c3}██${c4}║${c3}██${c4}╔═══╝ ${c3}██${c4}╔═══╝   ${c4}╚${c3}██${c4}╔╝
-${c3}██${c4}║  ${c3}██${c4}║${c3}██${c4}║  ${c3}██${c4}║${c3}██${c4}║     ${c3}██${c4}║        ${c3}██${c4}║
-╚═╝  ╚═╝╚═╝  ╚═╝╚═╝     ╚═╝        ╚═╝
-
-                 ${c5}██████${c6}╗ ${c5}██${c6}╗${c5}██████${c6}╗ ${c5}████████${c6}╗${c5}██${c6}╗  ${c5}██${c6}╗${c5}██████${c6}╗  ${c5}█████${c6}╗ ${c5}██${c6}╗   ${c5}██${c6}╗
-                 ${c5}██${c6}╔══${c5}██${c6}╗${c5}██${c6}║${c5}██${c6}╔══${c5}██${c6}╗╚══${c5}██${c6}╔══╝${c5}██${c6}║  ${c5}██${c6}║${c5}██${c6}╔══${c5}██${c6}╗${c5}██${c6}╔══${c5}██${c6}╗╚${c5}██${c6}╗ ${c5}██${c6}╔╝
-                 ${c5}██████${c6}╔╝${c5}██${c6}║${c5}██████${c6}╔╝   ${c5}██${c6}║   ${c5}███████${c6}║${c5}██${c6}║  ${c5}██${c6}║${c5}███████${c6}║ ╚${c5}████${c6}╔╝
-                 ${c5}██${c6}╔══${c5}██${c6}╗${c5}██${c6}║${c5}██${c6}╔══${c5}██${c6}╗   ${c5}██${c6}║   ${c5}██${c6}╔══${c5}██${c6}║${c5}██${c6}║  ${c5}██${c6}║${c5}██${c6}╔══${c5}██${c6}║  ╚${c5}██${c6}╔╝
-                 ${c5}██████${c6}╔╝${c5}██${c6}║${c5}██${c6}║  ${c5}██${c6}║   ${c5}██${c6}║   ${c5}██${c6}║  ${c5}██${c6}║${c5}██████${c6}╔╝${c5}██${c6}║  ${c5}██${c6}║   ${c5}██${c6}║
-                 ╚═════╝ ╚═╝╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═╝╚═════╝ ╚═╝  ╚═╝   ╚═╝
 EOF
                 ;;
 
