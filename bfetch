@@ -1529,21 +1529,28 @@ get_uptime() {
 }
 
 get_packages() {
+    # to adjust the number of pkgs per pkg manager
+    pkgs_h=0
+
     # has: Check if package manager installed.
     # dir: Count files or dirs in a glob.
     # pac: If packages > 0, log package manager name.
     # tot: Count lines in command output.
     has() { type -p "$1" >/dev/null && manager=$1; }
-    dir() { ((packages+=$#)); pac "$#"; }
+    dir() { ((packages+=$#)); pac "$(($#-pkgs_h))"; }
     pac() { (($1 > 0)) && { managers+=("$1 (${manager})"); manager_string+="${manager}, "; }; }
-    tot() { IFS=$'\n' read -d "" -ra pkgs <<< "$("$@")";((packages+=${#pkgs[@]}));pac "${#pkgs[@]}";}
+    tot() {
+	IFS=$'\n' read -d "" -ra pkgs <<< "$("$@")";
+	((packages+=${#pkgs[@]}));
+	pac "$((${#pkgs[@]}-pkgs_h))";
+    }
 
     # Redefine tot() for Bedrock Linux.
     [[ -f /bedrock/etc/bedrock-release && $PATH == */bedrock/cross/* ]] && {
         tot() {
             IFS=$'\n' read -d "" -ra pkgs <<< "$(for s in $(brl list); do strat -r "$s" "$@"; done)"
             ((packages+="${#pkgs[@]}"))
-            pac "${#pkgs[@]}"
+	    pac "$((${#pkgs[@]}-pkgs_h))";
         }
         br_prefix="/bedrock/strata/*"
     }
@@ -1552,8 +1559,9 @@ get_packages() {
         Linux|BSD|"iPhone OS"|Solaris)
             # Package Manager Programs.
             has kiss       && tot kiss l
-            has pacman-key && tot pacman -Qeq --color never
-            has dpkg       && tot dpkg-query -f '.\n' -W
+            has cpt-list   && tot cpt-list
+            has pacman-key && tot pacman -Qq --color never
+            has apt        && tot apt list
             has rpm        && tot rpm -qa
             has xbps-query && tot xbps-query -l
             has apk        && tot apk info
@@ -1562,11 +1570,15 @@ get_packages() {
             has lvu        && tot lvu installed
             has tce-status && tot tce-status -i
             has pkg_info   && tot pkg_info
-            has tazpkg     && tot tazpkg list && ((packages-=6))
+            has tazpkg     && pkgs_h=6 tot tazpkg list && ((packages-=6))
             has sorcery    && tot gaze installed
             has alps       && tot alps showinstalled
             has butch      && tot butch list
-            has mine       && tot mine -q
+            has swupd      && tot swupd bundle-list --quiet
+
+            # 'mine' conflicts with minesweeper games.
+            [[ -f /etc/SDE-VERSION ]] &&
+                has mine && tot mine -q
 
             # Counting files/dirs.
             # Variables need to be unquoted here. Only Bedrock Linux is affected.
@@ -1580,6 +1592,7 @@ get_packages() {
             has eopkg   && dir ${br_prefix}/var/lib/eopkg/package/*
             has crew    && dir ${br_prefix}/usr/local/etc/crew/meta/*.filelist
             has pkgtool && dir ${br_prefix}/var/log/packages/*
+            has scratch && dir ${br_prefix}/var/lib/scratchpkg/index/*/.pkginfo
             has kagami  && dir ${br_prefix}/var/lib/kagami/pkgs/*
             has cave    && dir ${br_prefix}/var/db/paludis/repositories/cross-installed/*/data/*/ \
                                ${br_prefix}/var/db/paludis/repositories/installed/data/*/
@@ -1595,9 +1608,13 @@ get_packages() {
             }
 
             has nix-store && {
-                manager=nix-system  && tot nix-store -q --requisites /run/current-system/sw
-                manager=nix-user    && tot nix-store -q --requisites ~/.nix-profile
-                manager=nix-default && tot nix-store -q --requisites /nix/var/nix/profiles/default
+                nix-user-pkgs() {
+                    nix-store -qR ~/.nix-profile
+                    nix-store -qR /etc/profiles/per-user/"$USER"
+                }
+                manager=nix-system  && tot nix-store -qR /run/current-system/sw
+                manager=nix-user    && tot nix-user-pkgs
+                manager=nix-default && tot nix-store -qR /nix/var/nix/profiles/default
             }
 
             # pkginfo is also the name of a python package manager which is painfully slow.
@@ -1622,21 +1639,26 @@ get_packages() {
 
             # Snap hangs if the command is run without the daemon running.
             # Only run snap if the daemon is also running.
-            has snap && ps -e | grep -qFm 1 snapd >/dev/null && tot snap list && ((packages-=1))
+            has snap && ps -e | grep -qFm 1 snapd >/dev/null && \
+		pkgs_h=1 tot snap list && ((packages-=1))
 
             # This is the only standard location for appimages.
             # See: https://github.com/AppImage/AppImageKit/wiki
             manager=appimage && has appimaged && dir ~/.local/bin/*.appimage
         ;;
 
-        "Mac OS X"|MINIX)
-            has port  && tot port installed && ((packages-=1))
+        "Mac OS X"|"macOS"|MINIX)
+            has port  && pkgs_h=1 tot port installed && ((packages-=1))
             has brew  && dir /usr/local/Cellar/*
             has pkgin && tot pkgin list
 
             has nix-store && {
-                manager=nix-system && tot nix-store -q --requisites "/run/current-system/sw"
-                manager=nix-user   && tot nix-store -q --requisites "$HOME/.nix-profile"
+                nix-user-pkgs() {
+                    nix-store -qR ~/.nix-profile
+                    nix-store -qR /etc/profiles/per-user/"$USER"
+                }
+                manager=nix-system && tot nix-store -qR /run/current-system/sw
+                manager=nix-user   && tot nix-store -qR nix-user-pkgs
             }
         ;;
 
@@ -1652,9 +1674,9 @@ get_packages() {
             esac
 
             # Scoop environment throws errors if `tot scoop list` is used
-            has scoop && dir ~/scoop/apps/* && ((packages-=1))
+            has scoop && pkgs_h=1 dir ~/scoop/apps/* && ((packages-=1))
 
-            # Count chocolatey packages.
+	    # Count chocolatey packages.
             [[ -d /cygdrive/c/ProgramData/chocolatey/lib ]] && \
                 dir /cygdrive/c/ProgramData/chocolatey/lib/*
         ;;
@@ -1662,11 +1684,11 @@ get_packages() {
         Haiku)
             has pkgman && dir /boot/system/package-links/*
             packages=${packages/pkgman/depot}
-        ;;
+	;;
 
         IRIX)
             manager=swpkg
-            tot versions -b && ((packages-=3))
+            pkgs_h=3 tot versions -b && ((packages-=3))
         ;;
     esac
 
