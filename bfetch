@@ -4619,7 +4619,6 @@ prin() {
     # Format the output.
     string="${string/:/${reset}${colon_color}}"
     [[ "$2" ]] && string="${string}${separator:=:}${info_color}"
-    string="${string/:/${reset}${colon_color}${separator:=:}${info_color}}"
     string="${subtitle_color}${bold}${string}"
 
     # Print the info.
