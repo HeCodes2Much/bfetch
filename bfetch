@@ -1258,7 +1258,6 @@ get_distro() {
         ascii_distro=$(trim "$distro")
     [[ $USER == syaoran ]] && ascii_distro="Syaoran"
     [ "$bd" = "true" ] && ascii_distro="HPBD"
-    [ "$user_input" = "true" ] && ascii_distro=$input_distro
 }
 
 get_model() {
@@ -5445,7 +5444,6 @@ get_args() {
             "--ascii_distro")
                 image_backend="ascii"
                 ascii_distro="$2"
-                user_input="true"
             ;;
 
             "--birthday")
@@ -5582,6 +5580,7 @@ old_functions() {
 }
 
 get_distro_ascii() {
+    echo "$ascii_distro"
     # This function gets the distro ascii art and colors.
     #
     # $ascii_distro is the same as $distro.
