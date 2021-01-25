@@ -5580,7 +5580,6 @@ old_functions() {
 }
 
 get_distro_ascii() {
-    echo "$ascii_distro"
     # This function gets the distro ascii art and colors.
     #
     # $ascii_distro is the same as $distro.
