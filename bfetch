@@ -4,7 +4,7 @@
 # shellcheck disable=2009
 #
 # Bfetch: A command-line system information tool written in bash 3.2+.
-# https://github.com/TheCynicalTeam/bfetch
+# https://github.com/The-Repo-Club/bfetch
 #
 # The CC BY-NC-SA 4.0 License (CC BY-NC-SA 4.0)
 #
@@ -53,7 +53,7 @@ log_dir="$HOME/.cache/bfetch"
 # Bfetch default config.
 read -rd '' config <<'EOF'
 # See this wiki page for more info:
-# https://github.com/TheCynicalTeam/bfetch/wiki/Customizing-Info
+# https://github.com/The-Repo-Club/bfetch/wiki/Customizing-Info
 print_info() {
     info title
     info underline
@@ -888,7 +888,7 @@ thumbnail_dir="${XDG_CACHE_HOME:-${HOME}/.cache}/thumbnails/bfetch"
 # Flag:     --crop_mode
 #
 # See this wiki page to learn about the fit and fill options.
-# https://github.com/TheCynicalTeam/bfetch/wiki/What-is-Waifu-Crop%3F
+# https://github.com/The-Repo-Club/bfetch/wiki/What-is-Waifu-Crop%3F
 crop_mode="normal"
 
 # Crop offset
@@ -4939,7 +4939,7 @@ cache_uname() {
 
     if [[ "$kernel_name" == "Darwin" ]]; then
         # macOS can report incorrect versions unless this is 0.
-        # https://github.com/TheCynicalTeam/bfetch/issues/1607
+        # https://github.com/The-Repo-Club/bfetch/issues/1607
         export SYSTEM_VERSION_COMPAT=0
 
         IFS=$'\n' read -d "" -ra sw_vers <<< "$(awk -F'<|>' '/key|string/ {print $3}' \
@@ -5275,7 +5275,7 @@ DEVELOPER:
     --gen-man                   Generate a manpage for Bfetch in your PWD. (Requires GNU help2man)
 
 
-Report bugs to https://github.com/TheCynicalTeam/bfetch/issues
+Report bugs to https://github.com/The-Repo-Club/bfetch/issues
 
 "
 exit 1
