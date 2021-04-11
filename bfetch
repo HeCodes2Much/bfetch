@@ -1936,6 +1936,7 @@ get_wm() {
                            -e "[c]atwm" \
                            -e "[f]vwm" \
                            -e "[d]wm" \
+                           -e "[i]nstawm" \
                            -e "[2]bwm" \
                            -e "[m]onsterwm" \
                            -e "[t]inywm" \
