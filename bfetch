@@ -6017,6 +6017,29 @@ ${c2}   /      \\
 EOF
         ;;
 
+        "Ventricle"*)
+            set_colors 1 7
+            read -rd '' ascii_data <<'EOF'
+${c2}             M####M
+         ##MMM    M####N
+      M#M               M###M
+    ##M                     M##M
+  N#M                         MN#N
+ M#M                           M ##
+VMM                             MM#
+                                  MM##
+${c1}NWM
+###                              .M
+###                              M:MN
+                                 #UUM
+${c2}  MM#
+   MM#                        M#M
+     M##                    ##M
+        N##              ##NW
+           M#####N#####MM
+EOF
+        ;;
+
         "arch_old")
             set_colors 6 7 1
             read -rd '' ascii_data <<'EOF'
