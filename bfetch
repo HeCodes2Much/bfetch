@@ -4001,13 +4001,10 @@ get_cols() {
         for ((block_range[0]; block_range[0]<=block_range[1]; block_range[0]++)); do
             case ${block_range[0]} in
                 [0-7])
-                    printf -v blocks  '%b\e[3%bm\e[4%bm%b' \
-                        "$blocks" "${block_range[0]}" "${block_range[0]}" "$block_width"
-                ;;
-
-                *)
-                    printf -v blocks2 '%b\e[38;5;%bm\e[48;5;%bm%b' \
-                        "$blocks2" "${block_range[0]}" "${block_range[0]}" "$block_width"
+                    printf -v blocks '%b\e[0;3%bm%b' \
+                        "$blocks" "${block_range[0]}" "$block_width"
+                    printf -v blocks '%b\e[1;3%bm%b' \
+                        "$blocks" "${block_range[0]}" "$block_width"
                 ;;
             esac
         done
