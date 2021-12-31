@@ -9,6 +9,7 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2015-2020 Dylan Araps
+# Copyright (c) 2021 Wayne Wesley
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -28,7 +29,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-version=2021.07.04
+version=2021.12.31
 
 # Fallback to a value of '5' for shells which support bash
 # but do not set the 'BASH_' shell variables (osh).
@@ -65,7 +66,7 @@ print_info() {
     info "Packages        " packages
     info "Shell           " shell
     info "Resolution      " resolution
-    info "D               " de
+    info "DE              " de
     info "WM              " wm
     info "WM Theme        " wm_theme
     info "Theme           " theme
@@ -93,7 +94,6 @@ print_info() {
 
 # Happy birthday ascii
 
-
 # Show HAPPY BIRTHDAY ascii art intead of distro's logo
 # Default:  'on'
 # Values:   'on', 'off'
@@ -103,7 +103,6 @@ user_bday="on"
 
 # Title
 
-
 # Hide/Show Fully qualified domain name.
 #
 # Default:  'off'
@@ -111,9 +110,7 @@ user_bday="on"
 # Flag:     --title_fqdn
 title_fqdn="off"
 
-
 # Kernel
-
 
 # Shorten the output of the kernel function.
 #
@@ -127,9 +124,7 @@ title_fqdn="off"
 # off: 'Linux 4.8.9-1-ARCH'
 kernel_shorthand="off"
 
-
 # Distro
-
 
 # Shorten the output of the distro function
 #
@@ -151,9 +146,7 @@ distro_shorthand="off"
 # off: 'Arch Linux'
 os_arch="on"
 
-
 # Uptime
-
 
 # Shorten the output of the uptime function
 #
@@ -167,9 +160,7 @@ os_arch="on"
 # off:  '2 days, 10 hours, 3 minutes'
 uptime_shorthand="tiny"
 
-
 # Memory
-
 
 # Show memory pecentage in output.
 #
@@ -194,9 +185,7 @@ memory_percent="on"
 # gib: ' 0.98GiB / 6.79GiB'
 memory_unit="gib"
 
-
 # Packages
-
 
 # Show/Hide Package Manager names.
 #
@@ -210,9 +199,7 @@ memory_unit="gib"
 # off:  '908'
 package_managers="on"
 
-
 # Shell
-
 
 # Show the path to $SHELL
 #
@@ -236,9 +223,7 @@ shell_path="on"
 # off: 'bash'
 shell_version="on"
 
-
 # CPU
-
 
 # CPU speed type
 #
@@ -315,9 +300,7 @@ cpu_cores="logical"
 # off: 'Intel i7-6500U (4) @ 3.1GHz'
 cpu_temp="C"
 
-
 # GPU
-
 
 # Enable/Disable GPU Brand
 #
@@ -349,9 +332,7 @@ gpu_brand="on"
 #   GPU1: Intel Integrated Graphics
 gpu_type="all"
 
-
 # Resolution
-
 
 # Display refresh rate next to each monitor
 # Default: 'off'
@@ -364,9 +345,7 @@ gpu_type="all"
 # off: '1920x1080'
 refresh_rate="on"
 
-
 # Gtk Theme / Icons / Font
-
 
 # Shorten output of GTK Theme / Icons / Font
 #
@@ -378,7 +357,6 @@ refresh_rate="on"
 # on:  'Numix, Adwaita'
 # off: 'Numix [GTK2], Adwaita [GTK3]'
 gtk_shorthand="off"
-
 
 # Enable/Disable gtk2 Theme / Icons / Font
 #
@@ -402,9 +380,7 @@ gtk2="on"
 # off: 'Numix [GTK2]'
 gtk3="on"
 
-
 # IP Address
-
 
 # Website to ping for the public IP
 #
@@ -427,9 +403,7 @@ public_ip_timeout=2
 # Flag:    --ip_interface
 local_ip_interface=('auto')
 
-
 # Desktop Environment
-
 
 # Show Desktop Environment version
 #
@@ -438,9 +412,7 @@ local_ip_interface=('auto')
 # Flag:    --de_version
 de_version="on"
 
-
 # Disk
-
 
 # Which disks to display.
 # The values can be any /dev/sdXX, mount point or directory.
@@ -496,9 +468,7 @@ disk_subtitle="dir"
 # off: 'Disk (/): 74G / 118G'
 disk_percent="on"
 
-
 # Song
-
 
 # Manually specify a music player.
 #
@@ -583,9 +553,7 @@ song_shorthand="off"
 # Example: mpc_args=(-h HOST -P PASSWORD)
 mpc_args=()
 
-
 # Text Colors
-
 
 # Text Colors
 #
@@ -601,9 +569,7 @@ mpc_args=()
 # colors=(4 6 1 8 8 6) - Text is colored in the order above.
 colors=(distro)
 
-
 # Text Options
-
 
 # Toggle bold text
 #
@@ -626,7 +592,6 @@ underline_enabled="on"
 # Flag:     --underline_char
 underline_char="~"
 
-
 # Info Separator
 # Replace the default separator with the specified string.
 #
@@ -646,7 +611,6 @@ separator=":"
 align_output="left"
 
 # Color Blocks
-
 
 # Color block range
 # The range of colors to print.
@@ -741,7 +705,6 @@ bar_length=15
 bar_color_elapsed="distro"
 bar_color_total="distro"
 
-
 # Info display
 # Display a bar with the info.
 #
@@ -762,9 +725,7 @@ memory_display="off"
 battery_display="off"
 disk_display="off"
 
-
 # Backend Settings
-
 
 # Image backend.
 #
@@ -790,9 +751,7 @@ image_backend="ascii"
 #       wallpaper will be used.
 image_source="auto"
 
-
 # Ascii Options
-
 
 # Ascii distro
 # Which distro's ascii art to display.
@@ -861,9 +820,7 @@ ascii_colors=(distro)
 # Flag:    --ascii_bold
 ascii_bold="on"
 
-
 # Image Options
-
 
 # Image loop
 # Setting this to on will make bfetch redraw the image constantly until
@@ -940,7 +897,6 @@ xoffset=0
 # Values:  'color', 'blue'
 # Flag:    --bg_color
 background_color=
-
 
 # Misc Options
 
@@ -1915,6 +1871,7 @@ get_wm() {
                                -e orbital \
                                -e orbment \
                                -e perceptia \
+                               -e qtile \
                                -e rustland \
                                -e sway \
                                -e ulubis \
@@ -4340,7 +4297,6 @@ get_window_size() {
     term_width="${term_width:-0}"
 }
 
-
 get_term_size() {
     # Get the terminal size in cells.
     read -r lines columns <<< "$(stty size)"
@@ -4473,7 +4429,6 @@ display_image() {
             "$image"
         ;;
 
-
         "ueberzug")
             if [ "$wait" = true ];then
                 wait=false;
@@ -4589,7 +4544,6 @@ to_off() {
     image_backend="off"
     text_padding=
 }
-
 
 # TEXT FORMATTING
 
@@ -5274,7 +5228,6 @@ OTHER:
 DEVELOPER:
     --gen-man                   Generate a manpage for Bfetch in your PWD. (Requires GNU help2man)
 
-
 Report bugs to https://github.com/The-Repo-Club/bfetch/issues
 
 "
@@ -5533,7 +5486,6 @@ get_args() {
                     # info "Public IP     " public_ip
                     # info "Users         " users
                     # info "Locale        " locale  # This only works on glibc systems.
-
 
                     # Testing.
                     prin "prin"
@@ -10900,7 +10852,6 @@ ${c1}        `osssssssssssssssssssso`
        .osssssssssssssssssssssso.
       .+oooooooooooooooooooooooo+.
 
-
   `::::::::::::::::::::::.         .:`
  `+ssssssssssssssssss+:.`     `.:+ssso`
 .ossssssssssssssso/.       `-+ossssssso.
@@ -10908,7 +10859,6 @@ ssssssssssssso/-`      `-/osssssssssssss
 .ossssssso/-`      .-/ossssssssssssssso.
  `+sss+:.      `.:+ssssssssssssssssss+`
   `:.         .::::::::::::::::::::::`
-
 
       .+oooooooooooooooooooooooo+.
        -osssssssssssssssssssssso-
@@ -10951,7 +10901,6 @@ EOF
             set_colors $info_col1 $info_col2 $light_col1 $dark_col1 $light_col2 $dark_col2
             read -rd '' ascii_data <<'EOF'
 ${c3}
-
 
 ██${c4}╗  ${c3}██${c4}╗ ${c3}█████${c4}╗ ${c3}██████${c4}╗ ${c3}██████${c4}╗ ${c3}██${c4}╗   ${c3}██${c4}╗
 ${c3}██${c4}║  ${c3}██${c4}║${c3}██${c4}╔══${c3}██${c4}╗${c3}██${c4}╔══${c3}██${c4}╗${c3}██${c4}╔══${c3}██${c4}╗╚${c3}██${c4}╗ ${c3}██${c4}╔╝
