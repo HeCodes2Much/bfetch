@@ -380,6 +380,17 @@ gtk2="on"
 # off: 'Numix [GTK2]'
 gtk3="on"
 
+# Enable/Disable Qt Theme / Icons / Font
+#
+# Default: 'on'
+# Values:  'on', 'off'
+# Flag:    --qt
+#
+# Example:
+# on:  'Breeze [Qt], Arc [GTK3]'
+# off: 'Arc [GTK3]'
+qt="on"
+
 # IP Address
 
 # Website to ping for the public IP
@@ -1766,6 +1777,7 @@ get_de() {
 
             elif [[ $DESKTOP_SESSION ]]; then
                 de=${DESKTOP_SESSION##*/}
+                de=${de/trinity/Trinity}
 
             elif [[ $GNOME_DESKTOP_SESSION_ID ]]; then
                 de=GNOME
@@ -3114,7 +3126,7 @@ get_resolution() {
 
 get_style() {
     # Fix weird output when the function is run multiple times.
-    unset gtk2_theme gtk3_theme theme path
+    unset qt_theme gtk2_theme gtk3_theme theme path
 
     if [[ "$DISPLAY" && $os != "Mac OS X" && $os != "macOS" ]]; then
         # Get DE if user has disabled the function.
@@ -3130,15 +3142,8 @@ get_style() {
 
                 if [[ -f "${kde_config_dir}/kdeglobals" ]]; then
                     kde_config_file="${kde_config_dir}/kdeglobals"
-
-                    kde_theme="$(grep "^${kde}" "$kde_config_file")"
-                    kde_theme="${kde_theme/*=}"
-                    if [[ "$kde" == "font" ]]; then
-                        kde_font_size="${kde_theme#*,}"
-                        kde_font_size="${kde_font_size/,*}"
-                        kde_theme="${kde_theme/,*} ${kde_theme/*,} ${kde_font_size}"
-                    fi
-                    kde_theme="$kde_theme [$de], "
+                    qt_theme="$(grep "^${kde}" "$kde_config_file")"
+                    qt_theme="${qt_theme/*=}"
                 else
                     err "Theme: KDE config files not found, skipping."
                 fi
@@ -3169,6 +3174,31 @@ get_style() {
             "Xfce"*)
                 type -p xfconf-query >/dev/null && \
                     gtk2_theme="$(xfconf-query -c xsettings -p "$xfconf")"
+            ;;
+
+            "Trinity")
+                tde_config_dir
+
+                if [[ -f "${tde_config_dir}/kdeglobals" ]]; then
+                    tde_config_file="${tde_config_dir}/kdeglobals"
+                    qt_theme="$(grep "^${kde}" "$tde_config_file")"
+                    qt_theme="${qt_theme/*=}"
+
+                else
+                    err "Theme: TDE config files not found, skipping."
+                fi
+            ;;
+
+            "LXQt"*)
+                shopt -s nullglob
+                if ! qt_theme=$(awk -F "=" -v r="^$lxqt" '
+                    $1~r { theme=$2 } 
+                    END { print theme }
+                ' {/etc/xdg,/etc/xdg/*,"$XDG_CONFIG_HOME"}/lxqt/lxqt.con?); then
+                    err "Theme: Can't read LXQt config files. Unsetting Qt theme."
+                    unset qt_theme
+                fi
+                shopt -u nullglob
             ;;
         esac
 
@@ -3209,42 +3239,120 @@ get_style() {
             gtk3_theme="${gtk3_theme/${name}*=}"
         fi
 
+        # Handle Qt5ct platform theme
+        if [[ "$QT_QPA_PLATFORMTHEME" == 'qt5ct' && -f "${XDG_CONFIG_HOME}/qt5ct/qt5ct.conf" ]]; then
+            qt_theme="$(grep "^${qt5ct}" "${XDG_CONFIG_HOME}/qt5ct/qt5ct.conf")"
+            qt_theme="${qt_theme/*=}"
+
+            if [[ "$qt5ct" == "style" ]]; then
+                qt5ct="custom_palette="
+                qt_theme="$(grep "^${qt5ct}" "${XDG_CONFIG_HOME}/qt5ct/qt5ct.conf")"
+                qt_theme="${qt_theme/*=}"
+                if [[ "${qt_theme}" == "true" ]]; then
+                    qt5ct="color_scheme_path="
+                    qt_theme="$(grep "^${qt5ct}" "${XDG_CONFIG_HOME}/qt5ct/qt5ct.conf")"
+                    qt_theme="${qt_theme/*=}"
+                    qt_theme=$(basename "${qt_theme}")
+                    IFS='.' read -r name ext <<< "$qt_theme"
+                    qt_theme="${name}"
+                fi
+            fi
+            # Reformat font, since qt5ct stores fonts in binary format
+            if [[ "$qt5ct" == "general" ]]; then
+                # Trim quotes and parentheses
+                qt_theme="${qt_theme#'"'}"
+                qt_theme="${qt_theme%'"'}"
+                qt_theme="${qt_theme#@Variant(}"
+                qt_theme="${qt_theme%)}"
+
+                # Read font name
+                qt5ct_font_name="${qt_theme#*@}"
+                qt5ct_font_name="${qt5ct_font_name%%@*}"
+                # Interpret backslashes
+                qt5ct_font_name="$(printf "%b" "$qt5ct_font_name")"
+                qt5ct_font_name="${qt5ct_font_name//[[:cntrl:]]}" # trim control characters 
+                
+
+                # Get font size
+                # Tread carefully, Qt sometimes uses @ in binary data
+                local pre_size="${qt_theme#*@}"
+                local pre_size="${pre_size#*@}"
+                # Need to declare array and manually handle the second byte
+                # (workaround for `od` without --endian)
+                IFS=' ' local raw_size=( $(printf "%b" "${pre_size}" | od -An -tu1 -N2) )
+                # Split the upper 4 bits (exponent) the lower 12.
+                local lowers=$(( ((raw_size[0]%16)<<8) + (raw_size[1]) ))
+                local upper4=$((raw_size[0]>>4 ))
+                qt5ct_font_size=$(( (2**(upper4+1)) + (lowers>>(11-upper4)) ))
+
+                qt_theme="$qt5ct_font_name $qt5ct_font_size"
+            fi
+        fi
+
+        # Forced Qt theme through environment variables - Apply only if handling widget style!
+        [[ "$kde" == "widgetStyle" && "$qt_theme" ]] && qt_theme="${QT_STYLE_OVERRIDE:-"$qt_theme"}"
+
+        # Reformat Qt fonts
+        if [[ "$kde" == "font" && "$qt_theme" ]]; then
+            qt_font_size="${qt_theme#*,}"
+            qt_font_size="${qt_font_size/,*}"
+            qt_theme="${qt_theme/,*} ${qt_font_size}"
+        fi
+
         # Trim whitespace.
         gtk2_theme="$(trim "$gtk2_theme")"
         gtk3_theme="$(trim "$gtk3_theme")"
+        qt_theme="$(trim "$qt_theme")"
 
         # Remove quotes.
         gtk2_theme="$(trim_quotes "$gtk2_theme")"
         gtk3_theme="$(trim_quotes "$gtk3_theme")"
+        qt_theme="$(trim_quotes "$qt_theme")"
+
+        # Handle Qt theme engines that load external themes
+        case "$qt_theme" in
+            'Kvantum')
+                if kvantum_theme="$(grep '^theme' "${XDG_CONFIG_HOME}/Kvantum/kvantum.kvconfig")"; then
+                    qt_theme="$kvantum_theme"
+                    qt_theme="${qt_theme/*=}"
+                fi
+                ;;
+            *'gtk2')
+                qt_theme="$gtk2_theme"
+                ;;
+        esac
 
         # Toggle visibility of GTK themes.
         [[ "$gtk2" == "off" ]] && unset gtk2_theme
         [[ "$gtk3" == "off" ]] && unset gtk3_theme
+        [[ "$qt" == "off" ]] && unset qt_theme
 
         # Format the string based on which themes exist.
-        if [[ "$gtk2_theme" && "$gtk2_theme" == "$gtk3_theme" ]]; then
-            gtk3_theme+=" [GTK2/3]"
-            unset gtk2_theme
-
-        elif [[ "$gtk2_theme" && "$gtk3_theme" ]]; then
-            gtk2_theme+=" [GTK2], "
-            gtk3_theme+=" [GTK3] "
-
-        else
-            [[ "$gtk2_theme" ]] && gtk2_theme+=" [GTK2] "
-            [[ "$gtk3_theme" ]] && gtk3_theme+=" [GTK3] "
-        fi
+        # append_theme theme toolkit
+        append_theme() {
+            if [[ "$1" ]]; then
+                if [[ "$1" == "$cur_theme" ]]; then
+                    theme+="/$2"
+                else
+                    theme+="], $1 [$2"
+                    cur_theme="$1"
+                fi
+            fi
+        }
+        theme=''
+        local cur_theme=''
+        append_theme "$qt_theme" 'Qt'
+        append_theme "$gtk2_theme" 'GTK2'
+        append_theme "$gtk3_theme" 'GTK3'
 
         # Final string.
-        theme="${kde_theme}${gtk2_theme}${gtk3_theme}"
-        theme="${theme%, }"
+        theme+=']'
+        theme="${theme#'], '}"
+        theme="${theme/'GTK2/GTK3'/'GTK2/3'}"
 
         # Make the output shorter by removing "[GTKX]" from the string.
         if [[ "$gtk_shorthand" == "on" ]]; then
-            theme="${theme// '[GTK'[0-9]']'}"
-            theme="${theme/ '[GTK2/3]'}"
-            theme="${theme/ '[KDE]'}"
-            theme="${theme/ '[Plasma]'}"
+            theme="${theme// '['*']'}"
         fi
     fi
 }
@@ -3254,7 +3362,9 @@ get_theme() {
     gsettings="gtk-theme"
     gconf="gtk_theme"
     xfconf="/Net/ThemeName"
-    kde="Name"
+    kde="widgetStyle"
+    lxqt="style"
+    qt5ct="style" # There is a property called 'stylesheets'.
 
     get_style
 }
@@ -3265,6 +3375,8 @@ get_icons() {
     gconf="icon_theme"
     xfconf="/Net/IconThemeName"
     kde="Theme"
+    lxqt="icon_theme"
+    qt5ct="icon_theme"
 
     get_style
     icons="$theme"
@@ -3276,6 +3388,8 @@ get_font() {
     gconf="font_theme"
     xfconf="/Gtk/FontName"
     kde="font"
+    lxqt="font"
+    qt5ct="general"
 
     get_style
     font="$theme"
@@ -4850,6 +4964,21 @@ kde_config_dir() {
     kde_config_dir="${kde_config_dir/$'/:'*}"
 }
 
+tde_config_dir() {
+    if [[ "$tde_config_dir" ]]; then
+        return
+
+    elif type -p tde-config &>/dev/null; then
+        tde_config_dir="$(tde-config --path config)"
+
+    elif [[ -d "${HOME}/.configtde" ]]; then
+        tde_config_dir="${HOME}/.configtde"
+
+    fi
+
+    tde_config_dir="${tde_config_dir/$'/:'*}"
+}
+
 term_padding() {
     # Get terminal padding to properly align cursor.
     [[ -z "$term" ]] && get_term
@@ -5259,6 +5388,7 @@ get_args() {
             "--gtk_shorthand") gtk_shorthand="$2" ;;
             "--gtk2") gtk2="$2" ;;
             "--gtk3") gtk3="$2" ;;
+            "--qt") qt="$2" ;;
             "--shell_path") shell_path="$2" ;;
             "--shell_version") shell_version="$2" ;;
             "--ip_host") public_ip_host="$2" ;;
@@ -5562,25 +5692,57 @@ h//NNNNh  ossss` +h  md- .hm/ `sNNNNN:+y
 EOF
         ;;
 
+	"Aperio GNU/Linux"*)
+	    set_colors 255
+	    read -rd '' ascii_data <<'EOF'
+${c2}
+ _.._  _ ._.. _
+(_][_)(/,[  |(_)
+   |   GNU/Linux
+EOF
+	;;
+
         "Hash"*)
             set_colors 123
             read -rd '' ascii_data <<'EOF'
 ${c1}
-
       +   ######   +
     ###   ######   ###
   #####   ######   #####
  ######   ######   ######
-
 ####### '"###### '"########
 #######   ######   ########
 #######   ######   ########
-
  ###### '"###### '"######
   #####   ######   #####
     ###   ######   ###
       ~   ######   ~
+EOF
+        ;;
 
+        "AlmaLinux"*)
+            set_colors 1 3 4 2 6
+            read -rd '' ascii_data <<'EOF'
+${c1}         'c:.
+${c1}        lkkkx, ..       ${c2}..   ,cc,
+${c1}        okkkk:ckkx'  ${c2}.lxkkx.okkkkd
+${c1}        .:llcokkx'  ${c2}:kkkxkko:xkkd,
+${c1}      .xkkkkdood:  ${c2};kx,  .lkxlll;
+${c1}       xkkx.       ${c2}xk'     xkkkkk:
+${c1}       'xkx.       ${c2}xd      .....,.
+${c3}      .. ${c1}:xkl'     ${c2}:c      ..''..
+${c3}    .dkx'  ${c1}.:ldl:'. ${c2}'  ${c4}':lollldkkxo;
+${c3}  .''lkkko'                     ${c4}ckkkx.
+${c3}'xkkkd:kkd.       ..  ${c5};'        ${c4}:kkxo.
+${c3},xkkkd;kk'      ,d;    ${c5}ld.   ${c4}':dkd::cc,
+${c3} .,,.;xkko'.';lxo.      ${c5}dx,  ${c4}:kkk'xkkkkc
+${c3}     'dkkkkkxo:.        ${c5};kx  ${c4}.kkk:;xkkd.
+${c3}       .....   ${c5}.;dk:.   ${c5}lkk.  ${c4}:;,
+             ${c5}:kkkkkkkdoxkkx
+              ,c,,;;;:xkkd.
+                ;kkkkl...
+                ;kkkkl
+                 ,od;
 EOF
         ;;
 
@@ -5672,7 +5834,6 @@ dMMMMMMMMMMMMMMMMh    yMMMMMMMMMMMMMMMMd
             `-+shy    shs+:`
 EOF
         ;;
-
         "Anarchy"*)
             set_colors 7 4
             read -rd '' ascii_data <<'EOF'
@@ -5746,7 +5907,6 @@ EOF
     "instantOS"*)
         set_colors 4 6
         read -rd '' ascii_data <<'EOF'
-
 ${c1}
      'cx0XWWMMWNKOd:'.
   .;kNMMMMMMMMMMMMMWNKd'
@@ -5969,29 +6129,6 @@ ${c2}   /      \\
 EOF
         ;;
 
-        "Ventricle"*)
-            set_colors 1 7
-            read -rd '' ascii_data <<'EOF'
-${c2}             M####M
-         ##MMM    M####N
-      M#M               M###M
-    ##M                     M##M
-  N#M                         MN#N
- M#M                           M ##
-VMM                             MM#
-                                  MM##
-${c1}NWM
-###                              .M
-###                              M:MN
-                                 #UUM
-${c2}  MM#
-   MM#                        M#M
-     M##                    ##M
-        N##              ##NW
-           M#####N#####MM
-EOF
-        ;;
-
         "arch_old")
             set_colors 6 7 1
             read -rd '' ascii_data <<'EOF'
@@ -6069,7 +6206,7 @@ EOF
         "ArchStrike"*)
             set_colors 8 6
             read -rd '' ascii_data <<'EOF'
-${c1}                   *
+${c1}                   *   
                   **.
                  ****
                 ******
@@ -6225,6 +6362,29 @@ ${c1}:syyyyyy/     :yyyyyy/${c2}-yyo.:syyyyyyyyyyy
 EOF
         ;;
 
+        "AsteroidOS"*)
+            set_colors 160 208 202 214
+            read -rd '' ascii_data <<'EOF'
+${c1}                    ***
+${c1}                   *****
+${c1}                **********
+${c1}              ***************
+${c1}           *///****////****////.
+${c2}         (/////// /////// ///////(
+${c2}      /(((((//*     //,     //((((((.
+${c2}    (((((((((((     (((        ((((((((
+${c2} *(((((((((((((((((((((((        ((((((((
+${c3}    (((((#(((((((#(((((        ((#(((((
+${c3}     (#(#(#####(#(#,       ####(#(#
+${c3}         #########        ########
+${c3}           /########   ########
+${c4}              #######%#######
+${c4}                (#%%%%%%%#
+${c4}                   %%%%%
+${c4}                    %%%
+EOF
+        ;;
+
         "Bedrock"*)
             set_colors 8 7
             read -rd '' ascii_data <<'EOF'
@@ -6369,6 +6529,30 @@ ${c1}              oMMNMMMMMMMMMMMMMMMMMMMMMM
 EOF
         ;;
 
+       "Bodhi"*)
+           set_colors 7 11 2
+           read -rd '' ascii_data <<'EOF'
+${c1}|           ${c2},,mmKKKKKKKKWm,,
+ ${c1}'      ${c2},aKKP${c1}LL**********|L*${c2}TKp,
+   ${c1}t  ${c2}aKP${c1}L**```          ```**L${c2}*Kp
+    IX${c1}EL${c3}L,wwww,              ${c1}``*||${c2}Kp
+  ,#P${c1}L|${c3}KKKpPP@IPPTKmw,          ${c1}`*||${c2}K
+ ,K${c1}LL*${c3}{KKKKKKPPb$KPhpKKPKp        ${c1}`||${c2}K
+ #${c1}PL  ${c3}!KKKKKKPhKPPP$KKEhKKKKp      ${c1}`||${c2}K
+!H${c1}L*   ${c3}1KKKKKKKphKbPKKKKKK$KKp      ${c1}`|I${c2}W
+$${c1}bL     ${c3}KKKKKKKKBQKhKbKKKKKKKK       ${c1}|I${c2}N
+$${c1}bL     ${c3}!KKKKKKKKKKNKKKKKKKPP`       ${c1}|I${c2}b
+TH${c1}L*     ${c3}TKKKKKK##KKKN@KKKK^         ${c1}|I${c2}M
+ K@${c1}L      ${c3}*KKKKKKKKKKKEKE5          ${c1}||${c2}K
+ `NL${c1}L      ${c3}`KKKKKKKKKK"```|L       ${c1}||${c2}#P
+  `K@${c1}LL       ${c3}`"**"`        ${c1}'.   :||${c2}#P
+    Yp${c1}LL                      ${c1}' |L${c2}$M`
+     `Tp${c1}pLL,                ,|||${c2}p'L
+        "Kpp${c1}LL++,.,    ,,|||$${c2}#K*   ${c1}'.
+           ${c2}`"MKWpppppppp#KM"`        ${c1}`h,
+EOF
+       ;;
+
        "bonsai"*)
            set_colors 6 2 3
            read -rd '' ascii_data <<'EOF'
@@ -6488,6 +6672,55 @@ ${c2}             ..........
         ..;cllllccccclllc;'.
           ...',;;;;;;,,...
                 .....
+EOF
+        ;;
+
+    "CBL-Mariner"*)
+        set_colors 6
+        read -rd '' ascii_data <<'EOF'
+${c1}                    .
+                  :-  .
+                :==. .=:
+              :===:  -==:
+            :-===:  .====:
+          :-====-   -=====:
+         -======   :=======:
+        -======.  .=========:
+       -======:   -==========.
+      -======-    -===========.
+     :======-      :===========.
+    :=======.       .-==========.
+   :=======:          -==========.
+  :=======-            :==========.
+ :=======-              .-========-
+:--------.                :========-
+                    ..:::--=========-
+            ..::---================-=-
+EOF
+        ;;
+
+        "CelOS"*)
+            set_colors 4 6 0 5
+            read -rd '' ascii_data <<'EOF'
+${c4}                     .,cmmmmmmmmmmmc,.
+                .,cmMMMMMMMMMMMMMMMMMMMMmc.
+             .cMMMMMMMMMMMMMMMMMMMMMMMMMMMmc.
+           .cMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMc.
+         ,:MMM ${c3}####################################${c4}
+        cMMMMMMmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmc.
+       .MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM.
+      .MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMc
+      "******************************MMMMMMMMMMMMMc:
+${c3}#################################### ${c4}MMMMMMMMMMMMMc
+      "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM:
+       "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM"
+       'MMMMMMMMM*******************************:
+        \"MMMMMM ${c3}#####################################
+         ${c4}`:MMMMMMmmmmmmmmmmmmmmmmmmmmmmmmmmmmm;
+           `"MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM"
+             `":MMMMMMMMMMMMMMMMMMMMMMMMM;'
+                `":MMMMMMMMMMMMMMMMMMM:"
+                     "************"
 EOF
         ;;
 
@@ -6822,6 +7055,32 @@ ${c2}   lodd${c1}dolccc${c2}ccox${c1}xoloo
 EOF
         ;;
 
+        *"Crystal Linux"*)
+            set_colors 13 5
+            read -rd '' ascii_data <<'EOF'
+${c1}                        mysssym
+${c1}                      mysssym
+${c1}                    mysssym
+${c1}                  mysssym
+${c1}                mysssyd
+${c1}              mysssyd    N
+${c1}            mysssyd    mysym
+${c1}          mysssyd      dysssym
+${c1}        mysssyd          dysssym
+${c1}      mysssyd              dysssym
+${c1}      mysssyd              dysssym
+${c1}        mysssyd          dysssym
+${c1}          mysssyd      dysssym
+${c1}            mysym    dysssym
+${c1}              N    dysssym
+${c1}                 dysssym
+${c1}               dysssym
+${c1}             dysssym
+${c1}           dysssym
+${c1}         dysssym
+EOF
+        ;;
+
         *"Cucumber"*)
             set_colors 2 3
             read -rd '' ascii_data <<'EOF'
@@ -6845,6 +7104,27 @@ o/${c2}--...::-:/::/:-......-::::::-/-...-${c1}:/o
       -/+/:${c2}----..........----${c1}:/+/-
         `:/+//${c2}::--------:::${c1}/+/:`
            `.-://++++++//:-.`
+EOF
+        ;;
+
+        "CyberOS"*)
+            set_colors 50 32 57
+            read -rd '' ascii_data <<'EOF'
+${c3}             !M$EEEEEEEEEEEP
+            .MMMMM000000Nr.
+            ${c3}&MMMMMM${c2}MMMMMMMMMMMMM9
+           ${c3}~MMM${c1}MMMM${c2}MMMMMMMMMMMMC
+      ${c1}"    ${c3}M${c1}MMMMMMM${c2}MMMMMMMMMMs
+    ${c1}iM${c2}MMM&&${c1}MMMMMMMM${c2}MMMMMMMM\\
+   ${c1}BMMM${c2}MMMMM${c1}MMMMMMM${c2}MMMMMM${c3}"
+  ${c1}9MMMMM${c2}MMMMMMM${c1}MMMM${c2}MMMM${c3}MMMf-
+        ${c2}sMMMMMMMM${c1}MM${c2}M${c3}MMMMMMMMM3_
+         ${c2}+ffffffff${c1}P${c3}MMMMMMMMMMMM0
+                    ${c2}CMMMMMMMMMMM
+                      }MMMMMMMMM
+                        ~MMMMMMM
+                          "RMMMM
+                            .PMB
 EOF
         ;;
 
@@ -6889,7 +7169,7 @@ EOF
             read -rd '' ascii_data <<'EOF'
 ${c2}       _,met$$$$$gg.
     ,g$$$$$$$$$$$$$$$P.
-  ,g$$P"     """Y$$.".
+  ,g$$P"        """Y$$.".
  ,$$P'              `$$$.
 ',$$P       ,ggs.     `$$b:
 `d$$'     ,$P"'   ${c1}.${c2}    $$$
@@ -6996,7 +7276,6 @@ EOF
         "DarkOs")
             set_colors 1 6 5 3 2
             read -rd '' ascii_data <<'EOF'
-
 ${c3}⠀⠀⠀⠀  ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢠⠢⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
 ${c1}⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣶⠋⡆⢹⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
 ${c5}⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⡆⢀⣤⢛⠛⣠⣿⠀⡏⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
@@ -7017,7 +7296,6 @@ ${c1}⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠐⠚⢲⣿⠀⣾⣿⣿⠁⠀
 ${c4}⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢢⣀⣿⡏⠀⣿⡿⠀⠀⠀⠀⠀⠀⠙⣦⠀⢧⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
 ${c3}⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢸⠿⣧⣾⣿⠀⠀⠀⠀⠀⠀⠀⠀⠀⠙⣮⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
 ${c5}⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠉⠙⠛⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-
 EOF
         ;;
 
@@ -7252,20 +7530,21 @@ EOF
         ;;
 
         "fedora_small")
-            set_colors 4 7 1
+            set_colors 12
             read -rd '' ascii_data <<'EOF'
-${c2}      _____
-     /   __)${c1}\\${c2}
-     |  /  ${c1}\\ \\${c2}
-  ${c1}__${c2}_|  |_${c1}_/ /${c2}
- ${c1}/ ${c2}(_    _)${c1}_/${c2}
-${c1}/ /${c2}  |  |
-${c1}\\ \\${c2}__/  |
- ${c1}\\${c2}(_____/
+${c1}        ,'''''.
+       |   ,.  |
+       |  |  '_'
+  ,....|  |..
+.'  ,_;|   ..'
+|  |   |  |
+|  ',_,'  |
+ '.     ,'
+   '''''
 EOF
         ;;
 
-        "Fedora"* | "RFRemix"*)
+        "Fedora_old"* | "RFRemix"*)
             set_colors 4 7 1
             read -rd '' ascii_data <<'EOF'
 ${c1}          /:-------------:\\
@@ -7285,6 +7564,31 @@ ${c1}          /:-------------:\\
 :---${c2}:sdNMMMMNds:${c1}------------:
 :------${c2}:://:${c1}-------------::
 :---------------------://
+EOF
+        ;;
+
+        "Fedora"*)
+            set_colors 12 7
+            read -rd '' ascii_data <<'EOF'
+${c1}             .',;::::;,'.
+         .';:cccccccccccc:;,.
+      .;cccccccccccccccccccccc;.
+    .:cccccccccccccccccccccccccc:.
+  .;ccccccccccccc;${c2}.:dddl:.${c1};ccccccc;.
+ .:ccccccccccccc;${c2}OWMKOOXMWd${c1};ccccccc:.
+.:ccccccccccccc;${c2}KMMc${c1};cc;${c2}xMMc${c1};ccccccc:.
+,cccccccccccccc;${c2}MMM.${c1};cc;${c2};WW:${c1};cccccccc,
+:cccccccccccccc;${c2}MMM.${c1};cccccccccccccccc:
+:ccccccc;${c2}oxOOOo${c1};${c2}MMM0OOk.${c1};cccccccccccc:
+cccccc;${c2}0MMKxdd:${c1};${c2}MMMkddc.${c1};cccccccccccc;
+ccccc;${c2}XM0'${c1};cccc;${c2}MMM.${c1};cccccccccccccccc'
+ccccc;${c2}MMo${c1};ccccc;${c2}MMW.${c1};ccccccccccccccc;
+ccccc;${c2}0MNc.${c1}ccc${c2}.xMMd${c1};ccccccccccccccc;
+cccccc;${c2}dNMWXXXWM0:${c1};cccccccccccccc:,
+cccccccc;${c2}.:odl:.${c1};cccccccccccccc:,.
+:cccccccccccccccccccccccccccc:'.
+.:cccccccccccccccccccccc:;,..
+  '::cccccccccccccc::;,.
 EOF
         ;;
 
@@ -7441,7 +7745,6 @@ EOF
         "Garuda"*)
             set_colors 7 7 3 7 2 4
             read -rd '' ascii_data <<'EOF'
-
 ${c3}
                      .%;888:8898898:
                    x;XxXB%89b8:b8%b88:
@@ -7460,7 +7763,6 @@ ${c3}
         dx88                   .t@x.
           d:SS@8ba89aa67a853Sxxad.
             .d988999889889899dd.
-
 EOF
 
         ;;
@@ -7525,7 +7827,24 @@ MMMMMMMMMMN${c1}s:..-/${c2}ohNMMMMMMMMMMMMMMMMMM
 MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
 MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
  MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+EOF
+        ;;
 
+        "glaucus"*)
+            set_colors 5
+            read -rd '' ascii_data <<'EOF'
+${c1}             ,,        ,d88P
+           ,d8P    ,ad8888*
+         ,888P    d88888*     ,,ad8888P*
+    d   d888P   a88888P*  ,ad8888888*
+  .d8  d8888:  d888888* ,d888888P*
+ .888; 88888b d8888888b8888888P
+ d8888J888888a88888888888888P*    ,d
+ 88888888888888888888888888P   ,,d8*
+ 888888888888888888888888888888888*
+ *8888888888888888888888888888888*
+  Y888888888P* `*``*888888888888*
+   *^888^*            *Y888P**
 EOF
         ;;
 
@@ -7678,25 +7997,21 @@ EOF
         ;;
 
         "Haiku"*)
-            set_colors 2 8
+            set_colors 1 3 7 2
             read -rd '' ascii_data <<'EOF'
-${c2}          :dc'
-       'l:;'${c1},${c2}'ck.    .;dc:.
-       co    ${c1}..${c2}k.  .;;   ':o.
-       co    ${c1}..${c2}k. ol      ${c1}.${c2}0.
-       co    ${c1}..${c2}k. oc     ${c1}..${c2}0.
-       co    ${c1}..${c2}k. oc     ${c1}..${c2}0.
-.Ol,.  co ${c1}...''${c2}Oc;kkodxOdddOoc,.
- ';lxxlxOdxkxk0kd${c1}oooll${c2}dl${c1}ccc:${c2}clxd;
-     ..${c1}oOolllllccccccc:::::${c2}od;
-       cx:ooc${c1}:::::::;${c2}cooolcX.
-       cd${c1}.${c2}''cloxdoollc' ${c1}...${c2}0.
-       cd${c1}......${c2}k;${c1}.${c2}xl${c1}....  .${c2}0.
-       .::c${c1};..${c2}cx;${c1}.${c2}xo${c1}..... .${c2}0.
-          '::c'${c1}...${c2}do${c1}..... .${c2}K,
-                  cd,.${c1}....:${c2}O,${c1}
-                    ':clod:'${c1}
-                        ${c1}
+${c3}
+           MMMM              MMMM
+           MMMM              MMMM
+           MMMM              MMMM
+           MMMM              MMMM
+           MMMM${c4}       .ciO| /YMMMMM*"
+${c3}           MMMM${c4}   .cOMMMMM|/MMMMM/`
+ ,         ,iMM|/MMMMMMMMMMMMMMM*
+  `*.__,-cMMMMMMMMMMMMMMMMM/`${c3}.MMM
+           MM${c4}MMMMMMM/`:MMM/  ${c3}MMMM
+           MMMM              MMMM
+           MMMM              MMMM
+           """"              """"
 EOF
         ;;
 
@@ -7720,6 +8035,21 @@ ${c2}                     `
 ::`                    `::`..`
                           .` `..
                                 ``
+EOF
+        ;;
+
+        "HydroOS"*)
+            set_colors 1 2 3 4 5
+            read -rd '' ascii_data <<'EOF'
+${c1}
+  _    _           _            ____   _____
+ | |  | |         | |          / __ \ / ____|
+ | |__| |_   _  __| |_ __ ___ | |  | | (___
+ |  __  | | | |/ _` | '__/ _ \| |  | |\___ \
+ | |  | | |_| | (_| | | | (_) | |__| |____) |
+ |_|  |_|\__, |\__,_|_|  \___/ \____/|_____/
+          __/ |
+         |___/
 EOF
         ;;
 
@@ -7758,6 +8088,24 @@ WW                           W
 EOF
         ;;
 
+        "iglunix"*|"iglu"*)
+            set_colors 8
+            read -rd '' ascii_data <<'EOF'
+${c1}     |
+     |        |
+              |
+|    ________
+|  /\   |    \
+  /  \  |     \  |
+ /    \        \ |
+/      \________\
+\      /        /
+ \    /        /
+  \  /        /
+   \/________/
+EOF
+        ;;
+
         "januslinux"*|"janus"*|"Ataraxia Linux"*|"Ataraxia"*)
             set_colors 4 5 6 2
             read -rd '' ascii_data <<'EOF'
@@ -7785,6 +8133,30 @@ ${c1}            cooo:     ${c2}coooooooooooooooooool
                        :oooool,    coool:, looool:,
                        looool:      ooooooooooooooo:
                        cooolc        .ooooooooooool
+EOF
+        ;;
+
+        "Kaisen"*)
+            set_colors 1 7 3
+            read -rd '' ascii_data <<'EOF'
+${c1}                          `
+                  `:+oyyho.
+             `+:`sdddddd/
+        `+` :ho oyo++ohds-`
+       .ho :dd.  .: `sddddddhhyso+/-
+       ody.ddd-:yd- +hysssyhddddddddho`
+       yddddddhddd` ` `--`   -+hddddddh.
+       hddy-+dddddy+ohh/..+sddddy/:::+ys
+      :ddd/sdddddddddd- oddddddd       `
+     `yddddddddddddddd/ /ddddddd/
+:.  :ydddddddddddddddddo..sddddddy/`
+odhdddddddo- `ddddh+-``....-+hdddddds.
+-ddddddhd:   /dddo  -ydddddddhdddddddd-
+ /hdy:o - `:sddds   .`./hdddddddddddddo
+  `/-  `+hddyosy+       :dddddddy-.-od/
+      :sydds           -hddddddd`    /
+       .+shd-      `:ohddddddddd`
+                `:+ooooooooooooo:
 EOF
         ;;
 
@@ -7937,7 +8309,6 @@ ${c1} K   K U   U RRRR   ooo
  KKK   U   U RRRR  o   o
  K  K  U   U R  R  o   o
  K   K  UUU  R   R  ooo
-
 ${c2}  SSS   AAA  W   W  AAA
  S     A   A W   W A   A
   SSS  AAAAA W W W AAAAA
@@ -8007,11 +8378,9 @@ ${c2}
     ://////`                 -//////.
    `/////:`                   ./////:
     .-::-`                     .:::-`
-
 .:://////////////////////////////////::.
 ////////////////////////////////////////
 .:////////////////////////////////////:.
-
 EOF
         ;;
 
@@ -8183,11 +8552,11 @@ EOF
         "mac"* | "Darwin")
             set_colors 2 3 1 1 5 4
             read -rd '' ascii_data <<'EOF'
-${c1}                    'c.
+${c1}                    c.'
                  ,xNMM.
                .OMMMMo
-               OMMM0,
-     .;loddo:' loolloddol;.
+               lMM"
+     .;loddo:.  .olloddol;.
    cKMMMMMMMMMMNWMMMMMMMMMM0:
 ${c2} .KMMMMMMMMMMMMMMMMMMMMMMMWd.
  XMMMMMMMMMMMMMMMMMMMMMMMX.
@@ -8195,11 +8564,11 @@ ${c3};MMMMMMMMMMMMMMMMMMMMMMMM:
 :MMMMMMMMMMMMMMMMMMMMMMMM:
 ${c4}.MMMMMMMMMMMMMMMMMMMMMMMMX.
  kMMMMMMMMMMMMMMMMMMMMMMMMWd.
- ${c5}.XMMMMMMMMMMMMMMMMMMMMMMMMMMk
-  .XMMMMMMMMMMMMMMMMMMMMMMMMK.
+ ${c5}'XMMMMMMMMMMMMMMMMMMMMMMMMMMk
+  'XMMMMMMMMMMMMMMMMMMMMMMMMK.
     ${c6}kMMMMMMMMMMMMMMMMMMMMMMd
      ;KMMMMMMMWXXWMMMMMMMk.
-       .cooc,.    .,coo:.
+       "cooc*"    "*coo'"
 EOF
         ;;
 
@@ -8267,7 +8636,7 @@ o00.              k0O${c2}dddddd${c1}occ
 EOF
         ;;
 
-        "Mandriva"*)
+        "Mandriva"* | "Mandrake"*)
             set_colors 4 3
             read -rd '' ascii_data <<'EOF'
 ${c2}                        ``
@@ -8318,6 +8687,33 @@ ${c1}██████████████████  ██████�
 ████████  ████████  ████████
 ████████  ████████  ████████
 ████████  ████████  ████████
+EOF
+        ;;
+
+        "TeArch"*)
+            set_colors 39 7 1
+            read -rd '' ascii_data <<'EOF'
+${c1}          @@@@@@@@@@@@@@
+      @@@@@@@@@              @@@@@@
+     @@@@@                     @@@@@
+     @@                           @@
+      @%                         @@
+       @                         @
+       @@@@@@@@@@@@@@@@@@@@@@@@ @@
+       .@@@@@@@@@@@@/@@@@@@@@@@@@
+       @@@@@@@@@@@@///@@@@@@@@@@@@
+      @@@@@@@@@@@@@((((@@@@@@@@@@@@
+     @@@@@@@@@@@#(((((((#@@@@@@@@@@@
+    @@@@@@@@@@@#//////////@@@@@@@@@@&
+    @@@@@@@@@@////@@@@@////@@@@@@@@@@
+    @@@@@@@@//////@@@@@/////@@@@@@@@@
+    @@@@@@@//@@@@@@@@@@@@@@@//@@@@@@@
+ @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+@@     .@@@@@@@@@@@@@@@@@@@@@@@@@      @
+ @@@@@@           @@@.           @@@@@@@
+   @@@@@@@&@@@@@@@#  #@@@@@@@@@@@@@@@@
+      @@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+          @@@@@@@@@@@@@@@@@@@@@
 EOF
         ;;
 
@@ -8847,23 +9243,29 @@ EOF
         "openEuler"*)
             set_colors 4 7 1
             read -rd '' ascii_data <<'EOF'
-${c1}
-                       (#####
-                     (((########  #####
-                    (((        ##########    __...__
-             ((((((((           #######    /((((((###\
-           (((((((((((   .......           \(((((####/
-          ((((((    ((((#########            *******
-    %((((((#          ((########
- /////(((((              ###
-/////(((((((#   (((&
-         (((((((((((((
-          ((((((((((((
-           (((((((((     ((((((###
-                       /((((((######
-                      //((((((######
-                       /((((((#####
-                        *********/
+${c1}                 `.cc.`
+             ``.cccccccc..`
+          `.cccccccccccccccc.`
+      ``.cccccccccccccccccccccc.``
+   `..cccccccccccccccccccccccccccc..`
+`.ccccccccccccccc${c2}/++/${c1}ccccccccccccccccc.`
+.ccccccccccccccc${c2}mNMMNdo+oso+${c1}ccccccccccc.
+.cccccccccc${c2}/++odms+//+mMMMMm/:+syso/${c1}cccc
+.ccccccccc${c2}yNNMMMs:::/::+o+/:${c1}c${c2}dMMMMMm${c1}cccc
+.ccccccc${c2}:+NmdyyhNNmNNNd:${c1}ccccc${c1}${c2}:oyyyo:${c1}cccc
+.ccc${c2}:ohdmMs:${c1}cccc${c2}+mNMNmy${c1}ccccccccccccccccc
+.cc${c2}/NMMMMMo////:${c1}c${c2}:///:${c1}cccccccccccccccccc
+.cc${c2}:syysyNMNNNMNy${c1}ccccccccccccccccccccccc
+.cccccccc${c2}+MMMMMNy${c1}c${c2}:/+++/${c1}cccccccccccccccc
+.ccccccccc${c2}ohhhs/${c1}c${c2}omMMMMNh${c1}ccccccccccccccc
+.ccccccccccccccc${c2}:MMMMMMMM/${c1}cccccccccccccc
+.cccccccccccccccc${c2}sNNNNNd+${c1}cccccccccccccc.
+`..cccccccccccccccc${c2}/+/:${c1}cccccccccccccc..`
+   ``.cccccccccccccccccccccccccccc.``
+       `.cccccccccccccccccccccc.`
+          ``.cccccccccccccc.``
+              `.cccccccc.`
+                 `....`
 EOF
         ;;
 
@@ -8872,7 +9274,6 @@ EOF
             read -rd '' ascii_data <<'EOF'
 ${c2}                         .sy/
                          .yh+
-
            ${c1}-+syyyo+-     ${c2} /+.
          ${c1}+ddo/---/sdh/   ${c2} ym-
        ${c1}`hm+        `sms${c2}   ym-```````.-.
@@ -9227,7 +9628,7 @@ EOF
         "PCLinuxOS"*)
             set_colors 4 7 1
             read -rd '' ascii_data <<'EOF'
-            ${c1}mhhhyyyyhhhdN
+${c1}            mhhhyyyyhhhdN
         dyssyhhhhhhhhhhhssyhN
      Nysyhhyo/:-.....-/oyhhhssd
    Nsshhy+.              `/shhysm
@@ -9294,6 +9695,57 @@ ${c1}       PP${c2}MMMM${c1}PPPPPPPPP${c2}MMMMMMM${c1}PPPPPPPP
 ${c1}         PP${c2}MM${c1}PPPPPPPP${c2}MMMMMMMMMM${c1}PPPP
 ${c1}           PPPPPPPPPP${c2}MMMMMMMM${c1}PPPP
 ${c1}               PPPPPPPPPPPPPP
+EOF
+        ;;
+
+        "Pisi"*)
+            set_colors 12 7 6 1 8
+            read -rd '' ascii_data <<'EOF'
+${c1}   \Fv/!-                      `:?lzC
+${c1}   Q!::=zFx!  ${c2}`;v6WBCicl;`  ${c1},vCC\!::#.
+${c1}  ,%:::,'` ${c2}+#%@@FQ@@.   ,cF%i${c1}``-',::a?
+${c1}  +m:,'```${c2}}3,/@@Q\@@       "af-${c1} `-'"7f
+  =o'.` ${c2}/m'   :Q@:Qg         ,kl${c1}  `.|o
+  :k` '${c2}$+      'Narm           >d,${c1}  ii
+   #`${c2}!p.        `C ,            'd+${c1} %'
+${c2}   !0m                           `6Kv
+   =a                              m+
+  !A     !\L|:            :|L\!     $:
+ .8`     Q''%Q#'        '#Q%''Q     `0-
+ :6      E|.6QQu        uQQ6.|E      p:
+  i{      \jts9?        ?9stj\      u\
+   |a`            -''.            `e>
+    ,m+     ${c1}'^ !`${c2}s@@@@a${c1}'"`+`${c2}     >e'
+      !3|${c1}`|=>>r-  ${c2}'U%:${c1}  '>>>=:`\3!
+       'xopE|      ${c2}`'${c1}     `ledoz-
+    `;=>>+`${c2}`^llci/|==|/iclc;`${c1}'>>>>:
+   `^`+~          ${c2}````${c1}          !!-^
+EOF
+        ;;
+
+        "PNM Linux"* | "WHPNM Linux"*)
+            set_colors 33 9 15 202
+            read -rd '' ascii_data <<'EOF'
+${c1}
+               ``.---..` `--`
+            ``.---........-:.${c2}-::`${c1}
+           ${c2}./::-${c1}........${c2}--::.````${c1}
+          ${c2}.:://:::${c1}----${c2}::::-..${c1}
+          ..${c2}--:::::--::::++-${c1}.`
+  ${c2}`-:-`${c1}   .-ohy+::${c2}-:::${c1}/sdmdd:.${c2}   `-:-
+   .-:::${c1}...${c3}sNNmds$y${c1}o/+${c3}sy+NN$m${c1}d+.`${c2}-:::-.
+     `.-:-${c1}./${c3}dN${c1}()${c3}yyooosd${c1}()${c3}$m${c1}dy${c2}-.::-.`${c1}
+      ${c2}`.${c1}-...-${c3}+hNdyyyyyydmy${c1}:......${c2}`${c1}
+ ``..--.....-${c3}yNNm${c4}hssssh${c3}mmdo${c1}.........```
+`-:://:.....${c3}hNNNNN${c4}mddm${c3}NNNmds${c1}.....//::--`
+  ```.:-...${c3}oNNNNNNNNNNNNNNmd/${c1}...:-.```
+      .....${c3}hNNNNNNNNNNNNNNmds${c1}....`
+      --...${c3}hNNNNNNNNNNNNNNmdo${c1}.....
+      .:...${c3}/NNNNNNNNNNNNNNdd${c1}:....`
+       `-...${c3}+mNNNNNNNNNNNmh${c1}:...-.
+     ${c4}.:+o+/:-${c1}:+oo+///++o+/:-${c4}:/+ooo/:.
+       ${c4}+oo/:o-            +oooooso.`
+       ${c4}.`   `             `/  .-//-
 EOF
         ;;
 
@@ -9405,6 +9857,25 @@ ${c1}                 /\\
 EOF
         ;;
 
+        "PuffOS"*)
+            set_colors 3
+            read -rd '' ascii_data <<'EOF'
+${c1}
+              _,..._,m,
+            ,/'      '"";
+           /             ".
+         ,'mmmMMMMmm.      \
+       _/-"^^^^^"""%#%mm,   ;
+ ,m,_,'              "###)  ;,
+(###%                 \#/  ;##mm.
+ ^#/  __        ___    ;  (######)
+  ;  //.\\     //.\\   ;   \####/
+ _; (#\"//     \\"/#)  ;  ,/
+@##\ \##/   =   `"=" ,;mm/
+`\##>.____,...,____,<####@
+EOF
+        ;;
+
         "Proxmox"*)
             set_colors 7 202
             read -rd '' ascii_data <<'EOF'
@@ -9509,6 +9980,27 @@ ${c1}               `..--..`
          .-:///////ssssssssssssssssss/`
             `.:////ssss+/+ssssssssssss.
                 `--//-    `-/osssso/.
+EOF
+        ;;
+
+        "Qubyt"*)
+            set_colors 4 5 0 4
+            read -rd '' ascii_data <<'EOF'
+${c1}    ########################${c2}(${c3}ooo
+${c1}    ########################${c2}(${c3}ooo
+${c1}###${c2}(${c3}ooo                  ${c1}###${c2}(${c3}ooo
+${c1}###${c2}(${c3}ooo                  ${c1}###${c2}(${c3}ooo
+${c1}###${c2}(${c3}ooo                  ${c1}###${c2}(${c3}ooo
+${c1}###${c2}(${c3}ooo                  ${c1}###${c2}(${c3}ooo
+${c1}###${c2}(${c3}ooo                  ${c1}###${c2}(${c3}ooo
+${c1}###${c2}(${c3}ooo                  ${c1}###${c2}(${c3}ooo
+${c1}###${c2}(${c3}ooo           ${c1}##${c3}o    ${c2}((((${c3}ooo
+${c1}###${c2}(${c3}ooo          o${c2}((${c1}###   ${c3}oooooo
+${c1}###${c2}(${c3}ooo           oo${c2}((${c1}###${c3}o
+${c1}###${c2}(${c3}ooo             ooo${c2}((${c1}###
+${c1}################${c2}(${c3}oo    oo${c2}((((${c3}o
+${c2}(((((((((((((((((${c3}ooo     ooooo
+  oooooooooooooooooo        o
 EOF
         ;;
 
@@ -9795,6 +10287,49 @@ ${c1}
 EOF
         ;;
 
+        "rocky_small"*)
+            set_colors 2
+                read -rd '' ascii_data <<'EOF'
+${c1}    `-/+++++++++/-.`
+ `-+++++++++++++++++-`
+.+++++++++++++++++++++.
+-+++++++++++++++++++++++.
++++++++++++++++/-/+++++++
++++++++++++++/.   ./+++++
++++++++++++:.       ./+++
++++++++++:`   `:/:`   .:/
+-++++++:`   .:+++++:`
+ .+++-`   ./+++++++++:`
+  `-`   ./+++++++++++-
+       -+++++++++:-.`
+EOF
+        ;;
+
+        "rocky"*)
+            set_colors 35
+            read -rd '' ascii_data <<'EOF'
+${c1}          __wgliliiligw_,
+       _williiiiiiliilililw,
+     _%iiiiiilililiiiiiiiiiii_
+   .Qliiiililiiiiiiililililiilm.
+  _iiiiiliiiiiililiiiiiiiiiiliil,
+ .lililiiilililiiiilililililiiiii,
+_liiiiiiliiiiiiiliiiiiF{iiiiiilili,
+jliililiiilililiiili@`  ~ililiiiiiL
+iiiliiiiliiiiiiili>`      ~liililii
+liliiiliiilililii`         -9liiiil
+iiiiiliiliiiiii~             "4lili
+4ililiiiiilil~|      -w,       )4lf
+-liiiiililiF'       _liig,       )'
+ )iiiliii@`       _QIililig,
+  )iiii>`       .Qliliiiililw
+   )<>~       .mliiiiiliiiiiil,
+            _gllilililiililii~
+           giliiiiiiiiiiiiT`
+          -^~$ililili@~~'
+EOF
+        ;;
+
         "Rosa"*)
             set_colors 4 7 1
             read -rd '' ascii_data <<'EOF'
@@ -9829,7 +10364,6 @@ ${c2} .|'''.|      |     '||''|.    ..|''||
   ''|||.    |  ||    ||'''|.  ||      ||
 .     '||  .''''|.   ||    || '|.     ||
 |'....|'  .|.  .||. .||...|'   ''|...|'
-
 |''||''|     |      ..|'''.|  '||''''|
    ||       |||    .|'     '   ||  .
    ||      |  ||   ||    ....  ||''|
@@ -10117,6 +10651,22 @@ yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy
 yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy
 EOF
         ;;
+
+        "SkiffOS"*)
+            set_colors 4 7
+            read -rd '' ascii_data <<'EOF'
+${c2}
+             ,@@@@@@@@@@@w,_
+  ${c2}====~~~,,.${c2}A@@@@@@@@@@@@@@@@@W,_
+  ${c1}`||||||||||||||L{${c2}"@$@@@@@@@@B"
+   ${c1}`|||||||||||||||||||||L{${c2}"$D
+     ${c2}@@@@@@@@@@@@@@@@@@@@@${c1}_||||}==,
+      ${c2}*@@@@@@@@@@@@@@@@@@@@@@@@@p${c1}||||==,
+        ${c1}`'||LLL{{""${c2}@$B@@@@@@@@@@@@@@@p${c1}||
+            ${c1}`~=|||||||||||L"${c2}$@@@@@@@@@@@
+                   ${c1}````'"""""""${c2}'""""""""
+EOF
+            ;;
 
         "Solus"*)
             set_colors 4 7 1
@@ -10530,7 +11080,6 @@ sssss${c2}yMMMMMmhy${c1}ssssssssssss${c2}NM${c1}ss${c2}dMy${c1}sssssss
       -+sssssssssssssss${c2}y${c1}ssssssss+-
         `:+ssssssssssssssssss+:`
             .:/+oossssoo+/:.
-
 EOF
         ;;
 
@@ -10599,26 +11148,26 @@ EOF
         "Ubuntu"* | "i3buntu"*)
             set_colors 1 7 3
             read -rd '' ascii_data <<'EOF'
-${c1}            .-/+oossssoo+/-.
-        `:+ssssssssssssssssss+:`
+${c1}            .-/+oossssoo+\-.
+        ´:+ssssssssssssssssss+:`
       -+ssssssssssssssssssyyssss+-
     .ossssssssssssssssss${c2}dMMMNy${c1}sssso.
-   /sssssssssss${c2}hdmmNNmmyNMMMMh${c1}ssssss/
+   /sssssssssss${c2}hdmmNNmmyNMMMMh${c1}ssssss\
   +sssssssss${c2}hm${c1}yd${c2}MMMMMMMNddddy${c1}ssssssss+
- /ssssssss${c2}hNMMM${c1}yh${c2}hyyyyhmNMMMNh${c1}ssssssss/
+ /ssssssss${c2}hNMMM${c1}yh${c2}hyyyyhmNMMMNh${c1}ssssssss\
 .ssssssss${c2}dMMMNh${c1}ssssssssss${c2}hNMMMd${c1}ssssssss.
 +ssss${c2}hhhyNMMNy${c1}ssssssssssss${c2}yNMMMy${c1}sssssss+
 oss${c2}yNMMMNyMMh${c1}ssssssssssssss${c2}hmmmh${c1}ssssssso
 oss${c2}yNMMMNyMMh${c1}sssssssssssssshmmmh${c1}ssssssso
 +ssss${c2}hhhyNMMNy${c1}ssssssssssss${c2}yNMMMy${c1}sssssss+
 .ssssssss${c2}dMMMNh${c1}ssssssssss${c2}hNMMMd${c1}ssssssss.
- /ssssssss${c2}hNMMM${c1}yh${c2}hyyyyhdNMMMNh${c1}ssssssss/
+ \ssssssss${c2}hNMMM${c1}yh${c2}hyyyyhdNMMMNh${c1}ssssssss/
   +sssssssss${c2}dm${c1}yd${c2}MMMMMMMMddddy${c1}ssssssss+
-   /sssssssssss${c2}hdmNNNNmyNMMMMh${c1}ssssss/
+   \sssssssssss${c2}hdmNNNNmyNMMMMh${c1}ssssss/
     .ossssssssssssssssss${c2}dMMMNy${c1}sssso.
       -+sssssssssssssssss${c2}yyy${c1}ssss+-
         `:+ssssssssssssssssss+:`
-            .-/+oossssoo+/-.
+            .-\+oossssoo+/-.
 EOF
         ;;
 
@@ -10707,7 +11256,55 @@ EOF
 
         ;;
 
-        "semc"*)
+        "VNux"*)
+        set_colors 11 8 15 1 7
+            read -rd '' ascii_data <<'EOF'
+${c1}              `
+           ^[XOx~.
+        ^_nwdbbkp0ti'
+        <vJCZw0LQ0Uj>
+${c2}          _j>!vC1,,
+     ${c4},${c2}   ,CY${c3}O${c2}t${c3}O${c2}1(l;"
+`${c4}~-{r(1I${c2} ^${c1}/zmwJuc:${c2}I^
+'${c4}?)|${c1}U${c4}/}-${c2} ^${c3}f${c1}OCLLOw${c3}_${c2},;
+ ,${c4}i,``. ${c2}",${c3}k%ooW@$d"${c2}I,'
+  '    ;^${c3}u$$$$$$$$^<${c2}:^
+   ` .>>${c3}($$${c5}$@@@@$$${c3}$nl${c2}[::
+    `!}?${c3}B$${c5}%&WMMW&%$${c3}$1}-${c2}}":
+    ^?j${c3}Z$${c5}WMMWWWWMMW$${c3}ofc${c2};;`
+    <~x&${c3}$${c5}&MWWWWWWWWp${c3}-${c5}l>[<
+${c1} 'ljmwn${c2}~tk8${c5}MWWWWM8O${c2}X${c1}r${c2}+]nC${c1}[
+!JZqwwdX${c2}:^C8${c5}#MMMM@${c2}X${c1}Odpdpq0<
+<wwwwmmpO${c2}1${c3}0@%%%%8${c2}d${c1}nqmwmqqqJl
+?QOZmqqqpb${c2}t[run/?!${c1}0pwqqQj-,
+ ^:l<{nUUv>      ^x00J("
+                   ^"
+EOF
+
+        ;;
+
+        "LangitKetujuh"*)
+            set_colors 7 4
+            read -rd '' ascii_data <<'EOF'
+${c1}
+   L7L7L7L7L7L7L7L7L7L7L7L7L7L7L7L7L7L7L7L7L7L
+      'L7L7L7L7L7L7L7L7L7L7L7L7L7L7L7L7L7L7L7L
+   L7L.   'L7L7L7L7L7L7L7L7L7L7L7L7L7L7L7L7L7L
+   L7L7L7L                             L7L7L7L
+   L7L7L7L                             L7L7L7L
+   L7L7L7L             L7L7L7L7L7L7L7L7L7L7L7L
+   L7L7L7L                'L7L7L7L7L7L7L7L7L7L
+   L7L7L7L                    'L7L7L7L7L7L7L7L
+   L7L7L7L                             L7L7L7L
+   L7L7L7L                             L7L7L7L
+   L7L7L7L7L7L7L7L7L7L7L7L7L7L7L7L7L7L.   'L7L
+   L7L7L7L7L7L7L7L7L7L7L7L7L7L7L7L7L7L7L7L.
+   L7L7L7L7L7L7L7L7L7L7L7L7L7L7L7L7L7L7L7L7L7L
+${c2}
+EOF
+        ;;
+
+       "semc"*)
             set_colors 2 8 1
             read -rd '' ascii_data <<'EOF'
 ${c1}            /\
@@ -10748,6 +11345,28 @@ ${c1}                    ,;::::;
 EOF
         ;;
 
+        *"[Windows 11]"*|*"on Windows 11"*|\
+        "Windows 11"* |"windows11")
+            set_colors 6 7
+            read -rd '' ascii_data <<'EOF'
+${c1}
+################  ################
+################  ################
+################  ################
+################  ################
+################  ################
+################  ################
+################  ################
+################  ################
+################  ################
+################  ################
+################  ################
+################  ################
+################  ################
+################  ################
+EOF
+        ;;
+
         *"[Windows 10]"*|*"on Windows 10"*|"Windows 8"*|\
         "Windows 10"* |"windows10"|"windows8")
             set_colors 6 7
@@ -10761,7 +11380,6 @@ llllllllllllll  lllllllllllllllllll
 llllllllllllll  lllllllllllllllllll
 llllllllllllll  lllllllllllllllllll
 llllllllllllll  lllllllllllllllllll
-
 llllllllllllll  lllllllllllllllllll
 llllllllllllll  lllllllllllllllllll
 llllllllllllll  lllllllllllllllllll
@@ -10851,7 +11469,6 @@ EOF
 ${c1}        `osssssssssssssssssssso`
        .osssssssssssssssssssssso.
       .+oooooooooooooooooooooooo+.
-
   `::::::::::::::::::::::.         .:`
  `+ssssssssssssssssss+:.`     `.:+ssso`
 .ossssssssssssssso/.       `-+ossssssso.
@@ -10859,38 +11476,12 @@ ssssssssssssso/-`      `-/osssssssssssss
 .ossssssso/-`      .-/ossssssssssssssso.
  `+sss+:.      `.:+ssssssssssssssssss+`
   `:.         .::::::::::::::::::::::`
-
       .+oooooooooooooooooooooooo+.
        -osssssssssssssssssssssso-
         `osssssssssssssssssssso`
 EOF
         ;;
 
-        "Syaoran"*)
-            set_colors 10 6 3 4
-            read -rd '' ascii_data <<'EOF'
-${c3}                .  ${c4}.
-${c3}            ./ymd` ${c4}yNh+.
-${c3}        `-odNMMMd` ${c4}yMMMMds:`
-${c3}     ./ymMMMMMMMd` ${c4}yMMMMMMMNy/.
-${c3} `-odNMMMMMMMMMMd` ${c4}yMMMMMMMMMMNdo-`
-${c3}`hMMMMMMMNhNMMMMd` ${c4}yMMMMNhNMMMMMMMm.
-${c3}`mMMMMNy:``yNMMMd` ${c4}yMMMMN.`:smMMMMN.
-${c3}`mMMMMMdo`  `.smd` ${c4}yMMMMMh/. sMMMMN.
-${c3}`sNMMMMMMMmy.  `   ${c4}yMMMMMMMNddMMMMN.
-${c3}  ` sdMMMMMMMNdo.  ${c4}yMMMMMMMMMMMMMd/
-${c3}`s+   `+hNMMMMMMd` ${c4}yMMMMNymMMMMMMs.
-${c3}`mMMm.   `:NMMMMd` ${c4}yMMMMN. .+mMMMMm.
-${c3}`mMMMMh   `mMMMMd` ${c4}yMMMMN.   sMMMMN.
-${c3}`mMMMMm/. `mMMMMd` ${c4}yMMMMN.   sMMMMN.
-${c3}`mMMMMMMNhYNMMMMd` ${c4}yMMMMN.   sMMMMN.
-${c3} .+hNMMMMMMMMMMMd` ${c4}yMMMMN.   sMNho-
-${c3}    `:smMMMMMMMMd` ${c4}yMMMMN.   sMN/
-${c3}        -ohNMMMMd` ${c4}yMMMMm.   s
-${c3}           `/ymMd` ${c4}yMmy/.
-${c3}              `-/  ${c4}:-`
-EOF
-                ;;
         "HPBD"*)
             info_col1=$(shuf -i1-6 -n1)
             info_col2=$(($info_col1 + 8))
