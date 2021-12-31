@@ -101,6 +101,14 @@ print_info() {
 # Note: To input user's birthday (example: 12 June), use this command: bfetch --birthday 12/06
 user_bday="on"
 
+# Happy near year ascii
+
+# Show HAPPY HEW YEAR ascii art intead of distro's logo
+# Default:  'on'
+# Values:   'on', 'off'
+# Flag:     --new_year
+new_year="on"
+
 # Title
 
 # Hide/Show Fully qualified domain name.
@@ -931,6 +939,13 @@ get_user_bday() {
     [ "$date" = "$userbday" ] && bd="true" || bd="false"
 }
 
+get_new_year() {
+    [ "$new_year" != "on" ] && ny="false" && return
+    # Check user's birthday
+    date="$(date +"%d/%m")"
+    [ "$date" = "01/01" ] && ny="true" || ny="false"
+}
+
 get_os() {
     # $kernel_name is set in a function called cache_uname and is
     # just the output of "uname -s".
@@ -1224,6 +1239,7 @@ get_distro() {
         ascii_distro=$(trim "$distro")
     [[ $USER == syaoran ]] && ascii_distro="Syaoran"
     [ "$bd" = "true" ] && ascii_distro="HPBD"
+    [ "$ny" = "true" ] && ascii_distro="HNYE"
 }
 
 get_model() {
@@ -1373,6 +1389,7 @@ get_title() {
         { [ $hour -eq 12 ] || [ $hour -lt 5 ]; } && good="Good afternoon, "
     fi
     [ "$bd" = "true" ] && good="Happy birthday, "
+    [ "$ny" = "true" ] && good="Happy new year, "
 
     title=${title_color}${bold}${good}${user}!
     length=$((${#user} + ${#hostname} + 1))
@@ -3192,7 +3209,7 @@ get_style() {
             "LXQt"*)
                 shopt -s nullglob
                 if ! qt_theme=$(awk -F "=" -v r="^$lxqt" '
-                    $1~r { theme=$2 } 
+                    $1~r { theme=$2 }
                     END { print theme }
                 ' {/etc/xdg,/etc/xdg/*,"$XDG_CONFIG_HOME"}/lxqt/lxqt.con?); then
                     err "Theme: Can't read LXQt config files. Unsetting Qt theme."
@@ -3270,8 +3287,7 @@ get_style() {
                 qt5ct_font_name="${qt5ct_font_name%%@*}"
                 # Interpret backslashes
                 qt5ct_font_name="$(printf "%b" "$qt5ct_font_name")"
-                qt5ct_font_name="${qt5ct_font_name//[[:cntrl:]]}" # trim control characters 
-                
+                qt5ct_font_name="${qt5ct_font_name//[[:cntrl:]]}" # trim control characters
 
                 # Get font size
                 # Tread carefully, Qt sometimes uses @ in binary data
@@ -5539,6 +5555,10 @@ get_args() {
                 user_bday="$2"
             ;;
 
+            "--new_year")
+                new_year="$2"
+            ;;
+
             "--ascii_bold") ascii_bold="$2" ;;
             "--logo" | "-L")
                 image_backend="ascii"
@@ -6206,7 +6226,7 @@ EOF
         "ArchStrike"*)
             set_colors 8 6
             read -rd '' ascii_data <<'EOF'
-${c1}                   *   
+${c1}                   *
                   **.
                  ****
                 ******
@@ -11482,6 +11502,41 @@ ssssssssssssso/-`      `-/osssssssssssss
 EOF
         ;;
 
+        "HNYE"*)
+            info_col1=$(shuf -i1-6 -n1)
+            info_col2=$(($info_col1 + 8))
+            dark_col1=$(shuf -i1-6 -n1)
+            dark_col2=$(shuf -i1-6 -n1)
+            light_col1=$(($dark_col1 + 8))
+            light_col2=$(($dark_col2 + 8))
+            set_colors $info_col1 $info_col2 $light_col1 $dark_col1 $light_col2 $dark_col2
+            read -rd '' ascii_data <<'EOF'
+    ${c1}
+
+    ${c1}██${c2}╗  ${c1}██${c2}╗ ${c1}█████${c2}╗ ${c1}██████${c2}╗ ${c1}██████${c2}╗ ${c1}██${c2}╗   ${c1}██${c2}╗
+    ${c1}██${c2}║  ${c1}██${c2}║${c1}██${c2}╔══${c1}██${c2}╗${c1}██${c2}╔══${c1}██${c2}╗${c1}██${c2}╔══${c1}██${c2}╗╚${c1}██${c2}╗ ${c1}██${c2}╔╝
+    ${c1}███████${c2}║${c1}███████${c2}║${c1}██████${c2}╔╝${c1}██████${c2}╔╝ ╚${c1}████${c2}╔╝
+    ${c1}██${c2}╔══${c1}██${c2}║${c1}██${c2}╔══${c1}██${c2}║${c1}██${c2}╔═══╝ ${c1}██${c2}╔═══╝   ╚${c1}██${c2}╔╝
+    ${c1}██${c2}║  ${c1}██${c2}║${c1}██${c2}║  ${c1}██${c2}║${c1}██${c2}║     ${c1}██${c2}║        ${c1}██${c2}║
+    ${c2}╚═╝  ╚═╝╚═╝  ╚═╝╚═╝     ╚═╝        ╚═╝
+
+        ${c3}███${c4}╗   ${c3}██${c4}╗${c3}███████${c4}╗${c3}██${c4}╗    ${c3}██${c4}╗
+        ${c3}████${c4}╗  ${c3}██${c4}║${c3}██${c4}╔════╝${c3}██${c4}║    ${c3}██${c4}║
+        ${c3}██${c4}╔${c3}██${c4}╗ ${c3}██${c4}║${c3}█████${c4}╗  ${c3}██${c4}║ ${c3}█${c4}╗ ${c3}██${c4}║
+        ${c3}██${c4}║╚${c3}██${c4}╗${c3}██${c4}║${c3}██${c4}╔══╝  ${c3}██${c4}║${c3}███${c4}╗${c3}██${c4}║
+        ${c3}██${c4}║ ╚${c3}████${c4}║${c3}███████${c4}╗╚${c3}███${c4}╔${c3}███${c4}╔╝
+        ${c4}╚═╝  ╚═══╝╚══════╝ ╚══╝╚══╝
+
+    ${c5}██${c6}╗   ${c5}██${c6}╗${c5}███████${c6}╗ ${c5}█████${c6}╗ ${c5}██████${c6}╗
+    ╚${c5}██${c6}╗ ${c5}██${c6}╔╝${c5}██${c6}╔════╝${c5}██${c6}╔══${c5}██${c6}╗${c5}██${c6}╔══${c5}██${c6}╗
+     ╚${c5}████${c6}╔╝ ${c5}█████${c6}╗  ${c5}███████${c6}║${c5}██████${c6}╔╝
+      ╚${c5}██${c6}╔╝  ${c5}██${c6}╔══╝  ${c5}██${c6}╔══${c5}██${c6}║${c5}██${c6}╔══${c5}██${c6}╗
+       ${c5}██${c6}║   ${c5}███████${c6}╗${c5}██${c6}║  ${c5}██${c6}║${c5}██${c6}║  ${c5}██${c6}║
+       ${c6}╚═╝   ╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝
+
+EOF
+                ;;
+
         "HPBD"*)
             info_col1=$(shuf -i1-6 -n1)
             info_col2=$(($info_col1 + 8))
@@ -11491,9 +11546,9 @@ EOF
             light_col2=$(($dark_col2 + 8))
             set_colors $info_col1 $info_col2 $light_col1 $dark_col1 $light_col2 $dark_col2
             read -rd '' ascii_data <<'EOF'
-${c3}
+    ${c3}
 
-██${c4}╗  ${c3}██${c4}╗ ${c3}█████${c4}╗ ${c3}██████${c4}╗ ${c3}██████${c4}╗ ${c3}██${c4}╗   ${c3}██${c4}╗
+${c3}██${c4}╗  ${c3}██${c4}╗ ${c3}█████${c4}╗ ${c3}██████${c4}╗ ${c3}██████${c4}╗ ${c3}██${c4}╗   ${c3}██${c4}╗
 ${c3}██${c4}║  ${c3}██${c4}║${c3}██${c4}╔══${c3}██${c4}╗${c3}██${c4}╔══${c3}██${c4}╗${c3}██${c4}╔══${c3}██${c4}╗╚${c3}██${c4}╗ ${c3}██${c4}╔╝
 ${c3}███████${c4}║${c3}███████${c4}║${c3}██████${c4}╔╝${c3}██████${c4}╔╝ ${c4}╚${c3}████${c4}╔╝
 ${c3}██${c4}╔══${c3}██${c4}║${c3}██${c4}╔══${c3}██${c4}║${c3}██${c4}╔═══╝ ${c3}██${c4}╔═══╝   ${c4}╚${c3}██${c4}╔╝
@@ -11717,6 +11772,7 @@ main() {
 
     get_args "$@"
     get_user_bday
+    get_new_year
     [[ $verbose != on ]] && exec 2>/dev/null
     get_simple "$@"
     get_distro
@@ -11759,6 +11815,7 @@ main() {
         sleep 1
     done
 
+    [ "$new_year" != "on" ] && return 0
     [ "$user_bday" != "on" ] && return 0
     userbday_content="$(cat $log_dir/userbday.log)"
     [ "$userbday_content" = "00/00" ] && echo "Please input your birthday (dd/mm) for better experience. Example 12 June: bfetch --birthday 12/06"
